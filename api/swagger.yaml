@@ -1,0 +1,508 @@
+openapi: 3.0.0
+info:
+  title: Сервис по обмену вещами Steam
+  description: API for exchanging virtual items
+  version: 0.0.1
+servers:
+- url: http://62.113.111.6/api/v1/
+  description: Dev server
+paths:
+  /items:
+    get:
+      tags:
+      - Items
+      summary: Метод получения вещей
+      responses:
+        "200":
+          description: Успешный ответ со списком вещей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Items'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - Items
+      summary: Создать новый предмет
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Item'
+        required: true
+      responses:
+        "200":
+          description: Успешное создание вещи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        "400":
+          description: "Bad request, invalid item data"
+        "500":
+          description: Internal server error
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /items/{item_id}:
+    get:
+      tags:
+      - Items
+      summary: Метод получения вещи по идентификатору
+      parameters:
+      - name: item_id
+        in: path
+        description: Идентификатор вещи
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+      responses:
+        "200":
+          description: Успешный ответ с 1-ой вещью
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+      - Items
+      summary: Удалить вещь по идентификатору
+      parameters:
+      - name: item_id
+        in: path
+        description: Идентификатор вещи
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+      responses:
+        "200":
+          description: Item deleted successfully
+          content:
+            application/json: {}
+        "404":
+          description: Item not found
+        "500":
+          description: Internal server error
+  /items/{item_id}/trades:
+    get:
+      tags:
+      - Trades
+      summary: "Получить трейды, в которых есть выбранный предмет"
+      parameters:
+      - name: item_id
+        in: path
+        description: Идентификатор вещи
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+      responses:
+        "200":
+          description: "Успешный ответ с трейдом, в котором есть выбранная вещь"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trades:
+    get:
+      tags:
+      - Trades
+      summary: Получить трейд офферы всех пользователей сервиса
+      responses:
+        "200":
+          description: Успешный ответ со списком всех трейд офферов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trades'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - Trades
+      summary: Создать новый трейд
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trade'
+        required: true
+      responses:
+        "200":
+          description: Успешное создание обмена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        "400":
+          description: "Bad request, invalid ..."
+        "500":
+          description: Internal server error
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trades/{trade_id}:
+    get:
+      tags:
+      - Trades
+      summary: Получить информацию о трейде по идентификатору трейда
+      parameters:
+      - name: trade_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: qwer-rtyu-iopa
+      responses:
+        "200":
+          description: Успешный ответ с информацией о выбранном трейде
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+      - Trades
+      summary: Обновить статус трейда
+      parameters:
+      - name: trade_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trade'
+        required: true
+      responses:
+        "200":
+          description: Trade status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        "400":
+          description: "Bad request, invalid trade status data"
+        "404":
+          description: Trade not found
+        "500":
+          description: Internal server error
+    delete:
+      tags:
+      - Trades
+      summary: Удалить трейд
+      parameters:
+      - name: trade_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "204":
+          description: Trade canceled successfully
+        "404":
+          description: Trade not found
+        "500":
+          description: Internal server error
+  /users:
+    get:
+      tags:
+      - Users
+      summary: Получение списка всех пользователей
+      responses:
+        "200":
+          description: Успешный ответ со списком всех пользователей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - Users
+      summary: Добавление нового пользователя
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "400":
+          description: "Bad request, invalid user data"
+        "500":
+          description: Internal server error
+  /users/{user_id}:
+    get:
+      tags:
+      - Users
+      summary: Получить пользователя по идентификатору пользователя
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 17
+      responses:
+        "200":
+          description: Успешный ответ с информацией о выбранном пользователе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+      - Users
+      summary: Обновить информацию о пользователе
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        "200":
+          description: User information updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "400":
+          description: "Bad request, invalid user data"
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+    delete:
+      tags:
+      - Users
+      summary: Удаление пользователя
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "204":
+          description: User deleted successfully
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+  /users/{user_id}/trades:
+    get:
+      tags:
+      - Trades
+      summary: Получить трейды определенного пользователя по идентификатору пользователя
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 17
+      responses:
+        "200":
+          description: Успешный ответ с трейдами выбранного пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        default:
+          description: Всё нестандартное (кроме 200 ОК)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Item:
+      required:
+      - item_id
+      - name
+      - rarity
+      type: object
+      properties:
+        item_id:
+          type: string
+          example: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+        name:
+          type: string
+          example: Hook
+        rarity:
+          type: string
+          description: Редкость предмета
+          enum:
+          - common
+          - uncommon
+          - rare
+          - mystical
+          - legendary
+          - immortal
+          - arcana
+        description:
+          type: string
+          description: Описание предмета
+      example:
+        item_id: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+        name: Hook
+        description: description
+        rarity: common
+    Items:
+      type: array
+      items:
+        $ref: '#/components/schemas/Item'
+      x-schema-name: Items
+    Error:
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+          example: Что-то пошло не так...
+    Trade:
+      required:
+      - trade_id
+      type: object
+      properties:
+        trade_id:
+          type: string
+          example: qwer-rtyu-iopa
+        status:
+          type: string
+          description: Статус обмена
+          enum:
+          - pending
+          - accepted
+          - rejected
+        offered_item:
+          $ref: '#/components/schemas/Item'
+        requested_item:
+          $ref: '#/components/schemas/Item'
+      example:
+        trade_id: qwer-rtyu-iopa
+        offered_item:
+          item_id: 72aswerf-728d-kf72-j2ud-9f8sk5jg7f43h
+          name: Hook
+          description: description
+          rarity: common
+        status: pending
+        requested_item: null
+    Trades:
+      type: array
+      items:
+        $ref: '#/components/schemas/Trade'
+      x-schema-name: Trades
+    User:
+      required:
+      - email
+      - user_id
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: Уникальный идентификатор пользователя
+          example: 17
+        username:
+          type: string
+          description: Имя пользователя
+          example: tolseone
+        email:
+          type: string
+          description: Адрес электронной почты пользователя
+          example: zxc@mail.ru
+      example:
+        user_id: 17
+        email: zxc@mail.ru
+        username: tolseone
+    Users:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+      x-schema-name: Users
