@@ -9,6 +9,7 @@
 package swagger
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -21,9 +22,21 @@ import (
 Изначально захардкодить вывод json
 */
 func ItemsGet(w http.ResponseWriter, r *http.Request) {
+	item1 := Item{ItemId: "1", Name: "Item 1", Rarity: "Common", Description: "Item 1 description"}
+	item2 := Item{ItemId: "2", Name: "Item 2", Rarity: "Uncommon", Description: "Item 2 description"}
+	items := Items{Items: []Item{item1, item2}}
+
+	// Сериализуем структуру в JSON
+	jsonData, err := json.Marshal(items)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Устанавливаю заголовки и отправляю JSON
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	// fmt.Fprintf(w, string())
 	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
 
 func ItemsItemIdDelete(w http.ResponseWriter, r *http.Request) {
@@ -38,11 +51,23 @@ func ItemsItemIdGet(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		fmt.Println("id is missing in parameters")
 	}
-	fmt.Fprintf(w, string("<h1>"+item_id+"</h1>"))
+	fmt.Fprintf(w, string(item_id))
 	w.WriteHeader(http.StatusOK)
 }
 
 func ItemsPost(w http.ResponseWriter, r *http.Request) {
+	// Декодируем JSON из тела запроса в объект Item
+	var newItem Item
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&newItem)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// TODO: обработка нового объекта Item, сохранение в базе данных или другие действия.
+
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(newItem)
 }
