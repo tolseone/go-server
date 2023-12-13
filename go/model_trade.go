@@ -9,12 +9,12 @@
 package swagger
 
 type Trade struct {
+	TradeId       string `json:"trade_id"`
+	Status        string `json:"status,omitempty"`
+	OfferedItem   *Item  `json:"offered_item,omitempty"`
+	RequestedItem *Item  `json:"requested_item,omitempty"`
+}
 
-	TradeId string `json:"trade_id"`
-	// Статус обмена
-	Status string `json:"status,omitempty"`
-
-	OfferedItem *Item `json:"offered_item,omitempty"`
-
-	RequestedItem *Item `json:"requested_item,omitempty"`
+type Trades struct {
+	Trades []Trade `json:"trades"`
 }
