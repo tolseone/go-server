@@ -13,13 +13,12 @@ import (
 	"net/http"
 
 	// WARNING!
-	// Change this to a fully-qualified import path
-	// once you place this file into your project.
+	// Change this to a fully-qualified import path once you place this file into your project.
 	// For example,
 	//
-	//    sw "github.com/myname/myrepo/go"
+	//    sw "github.com/tolseone/go-server/go"
 	//
-	sw "./go"
+	sw "go-server/go"
 )
 
 func main() {
