@@ -43,126 +43,126 @@ func NewRouter() *mux.Router {
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World!")
+	fmt.Fprintf(w, "<h1>Hello World!</h1>")
 }
 
 var routes = Routes{
 	Route{
 		"Index",
 		"GET",
-		"/api/v1//",
+		"/api/v1/",
 		Index,
 	},
 
 	Route{
 		"ItemsGet",
 		strings.ToUpper("Get"),
-		"/api/v1//items",
+		"/api/v1/items",
 		ItemsGet,
 	},
 
 	Route{
 		"ItemsItemIdDelete",
 		strings.ToUpper("Delete"),
-		"/api/v1//items/{item_id}",
+		"/api/v1/items/{item_id}",
 		ItemsItemIdDelete,
 	},
 
 	Route{
 		"ItemsItemIdGet",
 		strings.ToUpper("Get"),
-		"/api/v1//items/{item_id}",
+		"/api/v1/items/{item_id}",
 		ItemsItemIdGet,
 	},
 
 	Route{
 		"ItemsPost",
 		strings.ToUpper("Post"),
-		"/api/v1//items",
+		"/api/v1/items",
 		ItemsPost,
 	},
 
 	Route{
 		"ItemsItemIdTradesGet",
 		strings.ToUpper("Get"),
-		"/api/v1//items/{item_id}/trades",
+		"/api/v1/items/{item_id}/trades",
 		ItemsItemIdTradesGet,
 	},
 
 	Route{
 		"TradesGet",
 		strings.ToUpper("Get"),
-		"/api/v1//trades",
+		"/api/v1/trades",
 		TradesGet,
 	},
 
 	Route{
 		"TradesPost",
 		strings.ToUpper("Post"),
-		"/api/v1//trades",
+		"/api/v1/trades",
 		TradesPost,
 	},
 
 	Route{
 		"TradesTradeIdDelete",
 		strings.ToUpper("Delete"),
-		"/api/v1//trades/{trade_id}",
+		"/api/v1/trades/{trade_id}",
 		TradesTradeIdDelete,
 	},
 
 	Route{
 		"TradesTradeIdGet",
 		strings.ToUpper("Get"),
-		"/api/v1//trades/{trade_id}",
+		"/api/v1/trades/{trade_id}",
 		TradesTradeIdGet,
 	},
 
 	Route{
 		"TradesTradeIdPut",
 		strings.ToUpper("Put"),
-		"/api/v1//trades/{trade_id}",
+		"/api/v1/trades/{trade_id}",
 		TradesTradeIdPut,
 	},
 
 	Route{
 		"UsersUserIdTradesGet",
 		strings.ToUpper("Get"),
-		"/api/v1//users/{user_id}/trades",
+		"/api/v1/users/{user_id}/trades",
 		UsersUserIdTradesGet,
 	},
 
 	Route{
 		"UsersGet",
 		strings.ToUpper("Get"),
-		"/api/v1//users",
+		"/api/v1/users",
 		UsersGet,
 	},
 
 	Route{
 		"UsersPost",
 		strings.ToUpper("Post"),
-		"/api/v1//users",
+		"/api/v1/users",
 		UsersPost,
 	},
 
 	Route{
 		"UsersUserIdDelete",
 		strings.ToUpper("Delete"),
-		"/api/v1//users/{user_id}",
+		"/api/v1/users/{user_id}",
 		UsersUserIdDelete,
 	},
 
 	Route{
 		"UsersUserIdGet",
 		strings.ToUpper("Get"),
-		"/api/v1//users/{user_id}",
+		"/api/v1/users/{user_id}",
 		UsersUserIdGet,
 	},
 
 	Route{
 		"UsersUserIdPut",
 		strings.ToUpper("Put"),
-		"/api/v1//users/{user_id}",
+		"/api/v1/users/{user_id}",
 		UsersUserIdPut,
 	},
 }
