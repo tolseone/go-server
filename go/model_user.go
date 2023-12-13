@@ -16,3 +16,7 @@ type User struct {
 	// Адрес электронной почты пользователя
 	Email string `json:"email"`
 }
+
+type Users struct {
+	Users []User `json:"users"`
+}
