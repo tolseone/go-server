@@ -10,11 +10,26 @@ package swagger
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
+
+var db *gorm.DB
+
+func init() {
+	var err error
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Автомиграция модели данных
+	db.AutoMigrate(&Item{})
+}
 
 /*
 	Наполнить все методы (связь с БД и тд) - то есть настроить логику
@@ -22,41 +37,84 @@ import (
 Изначально захардкодить вывод json
 */
 func ItemsGet(w http.ResponseWriter, r *http.Request) {
-	item1 := Item{ItemId: "1", Name: "Item 1", Rarity: "Common", Description: "Item 1 description"}
-	item2 := Item{ItemId: "2", Name: "Item 2", Rarity: "Uncommon", Description: "Item 2 description"}
-	items := Items{Items: []Item{item1, item2}}
+	var items []Item
+	db.Find(&items)
 
-	// Сериализуем структуру в JSON
+	// Преобразование моделей данных в формат JSON
 	jsonData, err := json.Marshal(items)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Устанавливаю заголовки и отправляю JSON
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
 }
 
+// 	item1 := Item{ItemId: "1", Name: "Item 1", Rarity: "Common", Description: "Item 1 description"}
+// 	item2 := Item{ItemId: "2", Name: "Item 2", Rarity: "Uncommon", Description: "Item 2 description"}
+// 	items := Items{Items: []Item{item1, item2}}
+
+// 	// Сериализуем структуру в JSON
+// 	jsonData, err := json.Marshal(items)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	// Устанавливаю заголовки и отправляю JSON
+// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 	w.WriteHeader(http.StatusOK)
+// 	w.Write(jsonData)
+// }
+
 func ItemsItemIdDelete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	vars := mux.Vars(r)
+	itemID, ok := vars["item_id"]
+	if !ok {
+		http.Error(w, "item_id is missing in parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Удаление записи из базы данных
+	db.Delete(&Item{}, "item_id = ?", itemID)
 	w.WriteHeader(http.StatusOK)
 }
 
 func ItemsItemIdGet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	// Получение значения item_id из параметров запроса
 	vars := mux.Vars(r)
-	item_id, ok := vars["item_id"]
+	itemID, ok := vars["item_id"]
 	if !ok {
-		fmt.Println("id is missing in parameters")
+		http.Error(w, "item_id is missing in parameters", http.StatusBadRequest)
+		return
 	}
-	fmt.Fprintf(w, string(item_id))
+
+	// Ваш код для получения данных из базы данных по itemID
+	// Например:
+	var item Item
+	result := db.First(&item, "item_id = ?", itemID)
+	if result.Error != nil {
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+
+	// Преобразование модели данных в формат JSON
+	jsonData, err := json.Marshal(item)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
 
 func ItemsPost(w http.ResponseWriter, r *http.Request) {
-	// Декодируем JSON из тела запроса в объект Item
 	var newItem Item
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&newItem)
@@ -65,9 +123,26 @@ func ItemsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: обработка нового объекта Item, сохранение в базе данных или другие действия.
+	// Создание новой записи в базе данных
+	db.Create(&newItem)
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(newItem)
 }
+
+// 	// Декодируем JSON из тела запроса в объект Item
+// 	var newItem Item
+// 	decoder := json.NewDecoder(r.Body)
+// 	err := decoder.Decode(&newItem)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// TODO: обработка нового объекта Item, сохранение в базе данных или другие действия.
+
+// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 	w.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(w).Encode(newItem)
+// }
