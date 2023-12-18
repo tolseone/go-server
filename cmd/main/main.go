@@ -18,10 +18,26 @@ import (
 	//
 	//    sw "github.com/tolseone/go-server/go"
 	//
+	"go-server/internal/models/itemModel"
+	"go-server/internal/models/tradeModel"
+	"go-server/internal/models/userModel"
 	"go-server/internal/routers"
+	"go-server/internal/storage"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func main() {
+	db, err := gorm.Open(sqlite.Open("storage/test.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db.AutoMigrate(&item.Item{}, &trade.Trade{}, &user.User{})
+
+	repository := storage.NewSQLiteRepository(db)
+
 	log.Printf("Server started")
 
 	router := router.NewRouter()

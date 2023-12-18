@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"go-server/internal/models/item"
+	"go-server/internal/models/itemModel"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -23,7 +23,7 @@ var db *gorm.DB
 
 func init() {
 	var err error
-	db, err = gorm.Open(sqlite.Open("storage/test.db"), &gorm.Config{})
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -131,19 +131,3 @@ func ItemsPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(newItem)
 }
-
-// 	// Декодируем JSON из тела запроса в объект Item
-// 	var newItem Item
-// 	decoder := json.NewDecoder(r.Body)
-// 	err := decoder.Decode(&newItem)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// TODO: обработка нового объекта Item, сохранение в базе данных или другие действия.
-
-// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-// 	w.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(w).Encode(newItem)
-// }

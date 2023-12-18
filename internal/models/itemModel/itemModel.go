@@ -8,7 +8,7 @@
  */
 package item
 
-type Item struct {
+type Item struct { // Визуальное разделение package / name - ex. ItemStrc
 	ItemId      string `json:"item_id"`
 	Name        string `json:"name"`
 	Rarity      string `json:"rarity"`
