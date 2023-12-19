@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"go-server/internal/models/itemModel"
+	"go-server/internal/item"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

@@ -11,9 +11,9 @@ package router
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"go-server/internal/api/items"
-	"go-server/internal/api/trades"
-	"go-server/internal/api/users"
+	"go-server/internal/api/itemsApi"
+	"go-server/internal/api/tradesApi"
+	"go-server/internal/api/usersApi"
 	rt "go-server/internal/logger"
 	"net/http"
 	"strings"
