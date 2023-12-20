@@ -1,15 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go-server/internal/config"
 	"go-server/internal/item"
+	"go-server/internal/user"
+	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
 	"net"
 	"net/http"
-	"os"
-	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -25,6 +25,16 @@ func main() {
 	logger.Info("register item handler")
 	handler := item.NewHandler(logger)
 	handler.Reqister(router)
+	handler = user.NewHandler(logger)
+	handler.Reqister(router)
+
+	client, err := postgresql.NewClient(context.Background(), 3, cfg.Storage)
+	if err != nil {
+		logger.Fatal("Failed to connect to PostgreSQL:", err)
+	}
+	defer client.Close()
+
+	logger.Info("Connected to PostgreSQL!")
 
 	start(router, cfg)
 }
@@ -36,25 +46,9 @@ func start(router *httprouter.Router, cfg *config.Config) {
 	var listener net.Listener
 	var listenErr error
 
-	if cfg.Listen.Type == "sock" {
-		logger.Info("detect app path")
-		// /path/to/binary
-		// Dir() -- /path/to
-		appDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-		if err != nil {
-			logger.Fatal(err)
-		}
-		logger.Info("create socket")
-		socketPath := path.Join(appDir, "app.sock")
-
-		logger.Info("listen unix socket")
-		listener, listenErr = net.Listen("unix", socketPath)
-		logger.Infof("server is listening unix socket: %s", socketPath)
-	} else {
-		logger.Info("listen tcp")
-		listener, listenErr = net.Listen("tcp", fmt.Sprintf("%s:%s", cfg.Listen.BindIP, cfg.Listen.Port)) // lookback interface
-		logger.Infof("server is listening port %s:%s", cfg.Listen.BindIP, cfg.Listen.Port)
-	}
+	logger.Info("listen tcp")
+	listener, listenErr = net.Listen("tcp", fmt.Sprintf("%s:%s", cfg.Listen.BindIP, cfg.Listen.Port)) // lookback interface
+	logger.Infof("server is listening port %s:%s", cfg.Listen.BindIP, cfg.Listen.Port)
 
 	if listenErr != nil {
 		logger.Fatal(listenErr)
