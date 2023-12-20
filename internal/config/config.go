@@ -12,8 +12,17 @@ type Config struct {
 	Listen  struct {
 		Type   string `yaml:"type" env-default:"port"`         // Есть дефолт значения
 		BindIP string `yaml:"bind_ip" env-default:"127.0.0.1"` // Есть дефолт значения
-		Port   string `yaml:"port" env-default:"true"`         // Есть дефолт значения
+		Port   string `yaml:"port" env-default:"8080"`         // Есть дефолт значения
 	} `yaml:"listen"`
+	Storage StorageConfig `yaml:"storage"`
+}
+
+type StorageConfig struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Database string `json:"database"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 var instance *Config
