@@ -1,4 +1,4 @@
-package db
+package item
 
 import (
 	"context"
@@ -23,8 +23,8 @@ func formatQuery(q string) string {
 // Create implements item.Repository.
 func (r *repository) Create(ctx context.Context, item *item.Item) error {
 	q := `
-		INSERT INTO item (
-			item_id, 
+		INSERT INTO public.item (
+			id, 
 			name, 
 			rarity, 
 			description) 
@@ -33,17 +33,16 @@ func (r *repository) Create(ctx context.Context, item *item.Item) error {
 			$2, 
 			$3, 
 			$4)
-		RETURNING item_id
+		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	if err := r.client.QueryRow(ctx, q, item.ItemId, item.Name, item.Rarity, item.Description).Scan(&item.ItemId); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 			r.logger.Error(newErr)
-			return nil
+			return newErr
 		}
 		return err
-
 	}
 	return nil
 
@@ -57,7 +56,7 @@ func (r *repository) Delete(ctx context.Context, id string) error {
 // FindAll implements item.Repository.
 func (r *repository) FindAll(ctx context.Context) (i []item.Item, err error) {
 	q := `
-        SELECT item_id, name, rarity, description FROM item
+        SELECT id, name, rarity, description FROM public.item
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q)
@@ -87,7 +86,7 @@ func (r *repository) FindAll(ctx context.Context) (i []item.Item, err error) {
 // FindOne implements item.Repository.
 func (r *repository) FindOne(ctx context.Context, id string) (item.Item, error) {
 	q := `
-        SELECT item_id, name, rarity, description FROM item WHERE item_id = $1
+        SELECT id, name, rarity, description FROM public.item WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
