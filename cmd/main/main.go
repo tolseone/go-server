@@ -6,6 +6,7 @@ import (
 	"go-server/internal/config"
 	"go-server/internal/item"
 	"go-server/internal/user"
+	us "go-server/internal/user/db"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
 	"net"
@@ -22,19 +23,46 @@ func main() {
 
 	cfg := config.GetConfig()
 
+	PostgreSQLClient, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
+	if err != nil {
+		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
+	}
+	logger.Info("connected to PostgreSQL")
+	repository := us.NewRepository(PostgreSQLClient, logger)
+	logger.Info("connected to user repository")
+
+	// func Create()
+	// newUser := user.User{
+	// 	Username: "Dima",
+	// 	Email:    "dima@mail.ru",
+	// }
+	// if err := repository.Create(context.TODO(), &newUser); err != nil {
+	// 	logger.Fatalf("Failed to create user: %v", err)
+	// }
+	// logger.Infof("Created user: %v", newUser)
+
+	// func FindOne()
+	one, err := repository.FindOne(context.TODO(), "380ec643-c806-49ec-89bc-c0bf3c581e55")
+	if err != nil {
+		logger.Fatalf("Failed to find user: %v", err)
+	}
+	logger.Infof("Found user: %v", one)
+
+	// func FindAll()
+	all, err := repository.FindAll(context.TODO())
+	if err != nil {
+		logger.Fatalf("Failed to find all users: %v", err)
+	}
+
+	for _, usr := range all {
+		logger.Infof("%v", usr)
+	}
+
 	logger.Info("register item handler")
 	handler := item.NewHandler(logger)
 	handler.Reqister(router)
 	handler = user.NewHandler(logger)
 	handler.Reqister(router)
-
-	client, err := postgresql.NewClient(context.Background(), 3, cfg.Storage)
-	if err != nil {
-		logger.Fatal("Failed to connect to PostgreSQL:", err)
-	}
-	defer client.Close()
-
-	logger.Info("Connected to PostgreSQL!")
 
 	start(router, cfg)
 }
