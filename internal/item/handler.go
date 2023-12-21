@@ -30,7 +30,6 @@ func (h *handler) Reqister(router *httprouter.Router) {
 	router.POST(itemsURL, h.CreateItem)
 	router.DELETE(itemURL, h.DeleteItemByUUID)
 }
-
 func (h *handler) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(200)
 	w.Write([]byte("This is list of items"))

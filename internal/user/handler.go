@@ -24,41 +24,34 @@ func NewHandler(logger *logging.Logger) handlers.Handler {
 		logger: logger,
 	}
 }
-
 func (h *handler) Reqister(router *httprouter.Router) {
-	router.GET(usersURL, h.GetList)
+	router.GET(usersURL, h.GetUserList)
 	router.GET(userURL, h.GetUserByUUID)
 	router.POST(usersURL, h.CreateUser)
 	router.DELETE(userURL, h.DeleteUserByUUID)
 	router.PUT(userURL, h.UpdateUserByUUID)
 	router.PATCH(userURL, h.PartiallyUpdateUserByUUID)
 }
-
-func (h *handler) GetList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *handler) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(200)
 	w.Write([]byte("This is list of users"))
 }
-
 func (h *handler) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(200)
 	w.Write([]byte("This is user by UUID"))
 }
-
 func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(201)
 	w.Write([]byte("This is creating user"))
 }
-
 func (h *handler) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(204)
 	w.Write([]byte("This is delete user by UUID"))
 }
-
 func (h *handler) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(204)
 	w.Write([]byte("This is update user by UUID"))
 }
-
 func (h *handler) PartiallyUpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	w.WriteHeader(204)
 	w.Write([]byte("This is partially update user by UUID"))
