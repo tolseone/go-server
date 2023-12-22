@@ -26,17 +26,17 @@ func (r *repository) Create(ctx context.Context, user *user.User) error {
 		INSERT INTO public.user (
 			id, 
 			name, 
-			email, 
+			email 
 		) 
 		VALUES (
+			gen_random_uuid(), 
 			$1, 
-			$2, 
-			$3,
+			$2
 		)
 		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-	if err := r.client.QueryRow(ctx, q, user.UserId, user.Username, user.Email).Scan(&user.UserId); err != nil {
+	if err := r.client.QueryRow(ctx, q, user.Username, user.Email).Scan(&user.UserId); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 			r.logger.Error(newErr)
