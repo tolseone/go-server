@@ -32,14 +32,14 @@ func main() {
 	logger.Info("connected to user repository")
 
 	// func Create()
-	// newUser := user.User{
-	// 	Username: "Dima",
-	// 	Email:    "dima@mail.ru",
-	// }
-	// if err := repository.Create(context.TODO(), &newUser); err != nil {
-	// 	logger.Fatalf("Failed to create user: %v", err)
-	// }
-	// logger.Infof("Created user: %v", newUser)
+	newUser := user.User{
+		Username: "Dima",
+		Email:    "dima@mail.ru",
+	}
+	if err := repository.Create(context.TODO(), &newUser); err != nil {
+		logger.Fatalf("Failed to create user: %v", err)
+	}
+	logger.Infof("Created user: %v", newUser)
 
 	// func FindOne()
 	one, err := repository.FindOne(context.TODO(), "380ec643-c806-49ec-89bc-c0bf3c581e55")
