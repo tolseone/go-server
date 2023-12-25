@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"go-server/internal/config"
-	"go-server/internal/item"
-	"go-server/internal/user"
-	us "go-server/internal/user/db"
+	item "go-server/internal/controllers/handlers/handlerItem"
+	user "go-server/internal/controllers/handlers/handlerUser"
+	it "go-server/internal/repositories/db/postgresItem"
+	us "go-server/internal/repositories/db/postgresUser"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
 	"net"
@@ -28,41 +29,20 @@ func main() {
 		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
 	}
 	logger.Info("connected to PostgreSQL")
-	repository := us.NewRepository(PostgreSQLClient, logger)
+
+	repositoryUser := us.NewRepository(PostgreSQLClient, logger)
 	logger.Info("connected to user repository")
 
-	// func Create()
-	newUser := user.User{
-		Username: "Dima",
-		Email:    "dima@mail.ru",
-	}
-	if err := repository.Create(context.TODO(), &newUser); err != nil {
-		logger.Fatalf("Failed to create user: %v", err)
-	}
-	logger.Infof("Created user: %v", newUser)
+	repositoryItem := it.NewRepository(PostgreSQLClient, logger)
+	logger.Info("connected to item repository")
 
-	// func FindOne()
-	one, err := repository.FindOne(context.TODO(), "380ec643-c806-49ec-89bc-c0bf3c581e55")
-	if err != nil {
-		logger.Fatalf("Failed to find user: %v", err)
-	}
-	logger.Infof("Found user: %v", one)
-
-	// func FindAll()
-	all, err := repository.FindAll(context.TODO())
-	if err != nil {
-		logger.Fatalf("Failed to find all users: %v", err)
-	}
-
-	for _, usr := range all {
-		logger.Infof("%v", usr)
-	}
-
-	logger.Info("register item handler")
-	handler := item.NewHandler(logger)
+	handler := item.NewHandler(logger, repositoryItem)
 	handler.Reqister(router)
-	handler = user.NewHandler(logger)
+	logger.Info("registred item handler")
+
+	handler = user.NewHandler(logger, repositoryUser)
 	handler.Reqister(router)
+	logger.Info("registred user handler")
 
 	start(router, cfg)
 }
@@ -75,7 +55,7 @@ func start(router *httprouter.Router, cfg *config.Config) {
 	var listenErr error
 
 	logger.Info("listen tcp")
-	listener, listenErr = net.Listen("tcp", fmt.Sprintf("%s:%s", cfg.Listen.BindIP, cfg.Listen.Port)) // lookback interface
+	listener, listenErr = net.Listen("tcp", fmt.Sprintf("%s:%s", cfg.Listen.BindIP, cfg.Listen.Port))
 	logger.Infof("server is listening port %s:%s", cfg.Listen.BindIP, cfg.Listen.Port)
 
 	if listenErr != nil {
