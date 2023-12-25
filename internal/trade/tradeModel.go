@@ -9,7 +9,7 @@
 package trade
 
 import (
-	"go-server/internal/models/item"
+	"go-server/internal/models/itemModel"
 )
 
 type Trade struct {
