@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type repository struct {
+type RepositoryItem struct {
 	client postgresql.Client
 	logger *logging.Logger
 }
@@ -24,7 +24,7 @@ func formatQuery(q string) string {
 
 // Create implements user.Repository.
 // Create implements item.Repository.
-func (r *repository) Create(ctx context.Context, i interface{}) error {
+func (r *RepositoryItem) Create(ctx context.Context, i interface{}) error {
 	item := i.(*model.Item)
 	q := `
 		INSERT INTO public.item (
@@ -55,7 +55,7 @@ func (r *repository) Create(ctx context.Context, i interface{}) error {
 }
 
 // Delete implements item.Repository.
-func (r *repository) Delete(ctx context.Context, id string) error {
+func (r *RepositoryItem) Delete(ctx context.Context, id string) error {
 	q := `
 		DELETE FROM public.item
 		WHERE id = $1
@@ -70,7 +70,7 @@ func (r *repository) Delete(ctx context.Context, id string) error {
 }
 
 // FindAll implements item.Repository.
-func (r *repository) FindAll(ctx context.Context) (i []interface{}, err error) {
+func (r *RepositoryItem) FindAll(ctx context.Context) (i []interface{}, err error) {
 	q := `
         SELECT id, name, rarity, description FROM public.item
 	`
@@ -106,7 +106,7 @@ func (r *repository) FindAll(ctx context.Context) (i []interface{}, err error) {
 }
 
 // FindOne implements item.Repository.
-func (r *repository) FindOne(ctx context.Context, id string) (interface{}, error) {
+func (r *RepositoryItem) FindOne(ctx context.Context, id string) (interface{}, error) {
 	q := `
         SELECT id, name, rarity, description FROM public.item WHERE id = $1
 	`
@@ -122,7 +122,7 @@ func (r *repository) FindOne(ctx context.Context, id string) (interface{}, error
 }
 
 // Update implements item.Repository.
-func (r *repository) Update(ctx context.Context, item interface{}) error {
+func (r *RepositoryItem) Update(ctx context.Context, item interface{}) error {
 	updatedItem := item.(*model.Item)
 	q := `
 		UPDATE public.item
@@ -143,7 +143,7 @@ func (r *repository) Update(ctx context.Context, item interface{}) error {
 }
 
 func NewRepository(client postgresql.Client, logger *logging.Logger) storage.Repository {
-	return &repository{
+	return &RepositoryItem{
 		client: client,
 		logger: logger,
 	}
