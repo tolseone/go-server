@@ -3,7 +3,8 @@ package model
 import (
 	"context"
 	"errors"
-	"go-server/internal/repositories/db/postgresItem"
+	"go-server/internal/repositories"
+	"go-server/pkg/logging"
 
 	"github.com/google/uuid"
 )
@@ -16,14 +17,18 @@ type Item struct {
 }
 
 type ModelItem struct {
-	repositoryItem db.RepositoryItem
+	logger         *logging.Logger
+	repositoryItem storage.Repository
 }
 
-func NewModelItem(repo db.RepositoryItem) *ModelItem {
-	return &ModelItem{repositoryItem: repo}
+func NewModelItem(logger *logging.Logger, repo storage.Repository) *ModelItem {
+	return &ModelItem{
+		logger:         logger,
+		repositoryItem: repo,
+	}
 }
 
-func (m *ModelItem) CreateItem(ctx context.Context, item Item) error {
+func (m *ModelItem) CreateItem(ctx context.Context, item *Item) error {
 	return m.repositoryItem.Create(ctx, item)
 }
 

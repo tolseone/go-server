@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"go-server/internal/controllers"
 	"go-server/internal/models"
-	"go-server/internal/repositories"
 	"go-server/pkg/logging"
 	"net/http"
 
@@ -19,14 +18,14 @@ const (
 )
 
 type handler struct {
-	logger   *logging.Logger
-	repoItem storage.Repository
+	logger    *logging.Logger
+	modelItem *model.ModelItem
 }
 
-func NewHandler(logger *logging.Logger, repoItem storage.Repository) handlers.Handler {
+func NewHandlerItem(logger *logging.Logger, modelItem *model.ModelItem) handlers.Handler {
 	return &handler{
-		logger:   logger,
-		repoItem: repoItem,
+		logger:    logger,
+		modelItem: modelItem,
 	}
 }
 func (h *handler) Reqister(router *httprouter.Router) {
@@ -36,7 +35,7 @@ func (h *handler) Reqister(router *httprouter.Router) {
 	router.DELETE(itemURL, h.DeleteItemByUUID)
 }
 func (h *handler) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	items, err := h.repoItem.FindAll(r.Context())
+	items, err := h.modelItem.GetItemList(r.Context())
 	if err != nil {
 		h.logger.Errorf("failed to get items: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -52,7 +51,7 @@ func (h *handler) GetItemByUUID(w http.ResponseWriter, r *http.Request, params h
 	itemID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to fetch the item by ID
-	item, err := h.repoItem.FindOne(r.Context(), itemID)
+	item, err := h.modelItem.GetItemByUUID(r.Context(), itemID)
 	if err != nil {
 		h.logger.Errorf("failed to get item by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -75,7 +74,7 @@ func (h *handler) CreateItem(w http.ResponseWriter, r *http.Request, params http
 	// Создаем пользователя с извлеченными данными
 
 	// Подставьте сюда свою логику работы с базой данных
-	if err := h.repoItem.Create(r.Context(), &newItem); err != nil {
+	if err := h.modelItem.CreateItem(r.Context(), &newItem); err != nil {
 		h.logger.Fatalf("failed to create item: %v", err)
 		return
 	}
@@ -89,7 +88,7 @@ func (h *handler) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, param
 	itemID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to delete the item by ID
-	if err := h.repoItem.Delete(r.Context(), itemID); err != nil {
+	if err := h.modelItem.DeleteItemByUUID(r.Context(), itemID); err != nil {
 		h.logger.Errorf("failed to delete item by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"go-server/internal/config"
-	item "go-server/internal/controllers/handlers/handlerItem"
 	user "go-server/internal/controllers/handlers/handlerUser"
+	item "go-server/internal/controllers/handlers/handleritem"
+	"go-server/internal/models"
 	it "go-server/internal/repositories/db/postgresItem"
 	us "go-server/internal/repositories/db/postgresUser"
 	"go-server/pkg/client/postgresql"
@@ -30,19 +31,21 @@ func main() {
 	}
 	logger.Info("connected to PostgreSQL")
 
-	repositoryUser := us.NewRepository(PostgreSQLClient, logger)
-	logger.Info("connected to user repository")
+	// repositoryUser := us.NewRepository(PostgreSQLClient, logger)
+	// logger.Info("connected to user repository")
 
 	repositoryItem := it.NewRepository(PostgreSQLClient, logger)
 	logger.Info("connected to item repository")
 
-	handler := item.NewHandler(logger, repositoryItem)
+	modelItem := model.NewModelItem(repositoryItem)
+
+	handler := item.NewHandler(logger, modelItem)
 	handler.Reqister(router)
 	logger.Info("registred item handler")
 
-	handler = user.NewHandler(logger, repositoryUser)
-	handler.Reqister(router)
-	logger.Info("registred user handler")
+	// handler = user.NewHandler(logger, modelUser)
+	// handler.Reqister(router)
+	// logger.Info("registred user handler")
 
 	start(router, cfg)
 }
