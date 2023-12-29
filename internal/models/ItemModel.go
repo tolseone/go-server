@@ -3,7 +3,7 @@ package model
 import (
 	"context"
 	"errors"
-	"go-server/internal/repositories"
+	"go-server/internal/repositories/db/postgresItem"
 	"go-server/pkg/logging"
 
 	"github.com/google/uuid"
@@ -16,54 +16,37 @@ type Item struct {
 	Description string    `json:"description,omitempty"`
 }
 
-type ModelItem struct {
-	logger         *logging.Logger
-	repositoryItem storage.Repository
+func NewItem(Name, Rarity, Description string) *Item {
+	itm := new(Item)
+	itm.Name = Name
+	itm.Rarity = Rarity
+	itm.Description = Description
+	return itm
 }
-
-func NewModelItem(logger *logging.Logger, repo storage.Repository) *ModelItem {
-	return &ModelItem{
-		logger:         logger,
-		repositoryItem: repo,
-	}
-}
-
-func (m *ModelItem) CreateItem(ctx context.Context, item *Item) error {
-	return m.repositoryItem.Create(ctx, item)
-}
-
-func (m *ModelItem) GetItemList(ctx context.Context) ([]Item, error) {
-	entities, err := m.repositoryItem.FindAll(ctx)
+func LoadItem(id string) (*Item, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepository(db.RepositoryItem.Client, logger)
+	data, err := repo.FindOne(context.TODO(), id)
 	if err != nil {
-		return nil, err
+		logger.Infof("Failed to load item: %v", err)
+		return &Item{}, err
 	}
 
-	items := make([]Item, len(entities))
-	for i, entity := range entities {
-		items[i] = entity.(Item)
-	}
+	itm := NewItem(data.(Item).Name, data.(Item).Rarity, data.(Item).Description)
+	return itm, nil
 
-	return items, nil
 }
+func (itm *Item) save() {
+	var data *db.ItemData
+	data.Name = itm.Name
+	data.Rarity = itm.Rarity
+	data.Description = itm.Description
 
-func (m *ModelItem) GetItemByUUID(ctx context.Context, uuid string) (*Item, error) {
-	entity, err := m.repositoryItem.FindOne(ctx, uuid)
-	if err != nil {
-		return nil, err
+	logger := logging.GetLogger()
+	repo := db.NewRepository(db.RepositoryItem.Client, logger)
+	if itm.ItemId != uuid.Nil {
+		repo.Update(context.TODO(), data)
+	} else {
+		repo.Create(context.TODO(), data)
 	}
-
-	item, ok := entity.(Item)
-	if !ok {
-		return nil, errors.New("invalid entity type")
-	}
-
-	return &item, nil
-}
-
-func (m *ModelItem) UpdateItem(ctx context.Context, updatedItem *Item) error {
-	return m.repositoryItem.Update(ctx, updatedItem)
-}
-
-func (m *ModelItem) DeleteItemByUUID(ctx context.Context, uuid string) error {
-	return m.repositoryItem.Delete(ctx, uuid)
 }

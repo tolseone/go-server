@@ -1,8 +1,7 @@
-package handler
+package handlerItem
 
 import (
 	"encoding/json"
-	"go-server/internal/controllers"
 	"go-server/internal/models"
 	"go-server/pkg/logging"
 	"net/http"
@@ -10,31 +9,15 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-var _ handlers.Handler = &handler{} // подсказка - если в методах что-то не так, то оно падает
-
-const (
-	itemsURL = "/api/items"
-	itemURL  = "/api/items/:uuid"
-)
-
-type handler struct {
-	logger    *logging.Logger
-	modelItem *model.ModelItem
+type ItemController struct {
+	logger *logging.Logger
 }
 
-func NewHandlerItem(logger *logging.Logger, modelItem *model.ModelItem) handlers.Handler {
-	return &handler{
-		logger:    logger,
-		modelItem: modelItem,
-	}
+func NewItemController() *ItemController {
+	return &ItemController{}
 }
-func (h *handler) Reqister(router *httprouter.Router) {
-	router.GET(itemsURL, h.GetItemList)
-	router.GET(itemURL, h.GetItemByUUID)
-	router.POST(itemsURL, h.CreateItem)
-	router.DELETE(itemURL, h.DeleteItemByUUID)
-}
-func (h *handler) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+
+func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	items, err := h.modelItem.GetItemList(r.Context())
 	if err != nil {
 		h.logger.Errorf("failed to get items: %v", err)
@@ -47,11 +30,11 @@ func (h *handler) GetItemList(w http.ResponseWriter, r *http.Request, params htt
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(items)
 }
-func (h *handler) GetItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemController) GetItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to fetch the item by ID
-	item, err := h.modelItem.GetItemByUUID(r.Context(), itemID)
+	item, err := model.LoadItem(itemID)
 	if err != nil {
 		h.logger.Errorf("failed to get item by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -63,9 +46,9 @@ func (h *handler) GetItemByUUID(w http.ResponseWriter, r *http.Request, params h
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(item)
 }
-func (h *handler) CreateItem(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлекаем данные из тела запроса
-	var newItem model.Item
+	var newItem = model.NewItem() // ??? что прописывать
 	if err := json.NewDecoder(r.Body).Decode(&newItem); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -84,7 +67,7 @@ func (h *handler) CreateItem(w http.ResponseWriter, r *http.Request, params http
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newItem)
 }
-func (h *handler) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemController) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to delete the item by ID
