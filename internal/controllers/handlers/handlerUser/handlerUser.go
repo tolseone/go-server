@@ -1,10 +1,8 @@
-package handler
+package handlerUser
 
 import (
 	"encoding/json"
-	"go-server/internal/controllers"
-	model "go-server/internal/models"
-	"go-server/internal/repositories"
+	"go-server/internal/models"
 	"go-server/pkg/logging"
 	"net/http"
 
@@ -12,32 +10,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-var _ handlers.Handler = &handler{} // подсказка - если в методах что-то не так, то оно падает
-
-const (
-	usersURL = "/api/users"
-	userURL  = "/api/users/:uuid"
-)
-
-type handler struct {
-	logger   *logging.Logger
-	repoUser storage.Repository
+type UserController struct {
+	logger *logging.Logger
 }
 
-func NewHandler(logger *logging.Logger, repoUser storage.Repository) handlers.Handler {
-	return &handler{
-		logger:   logger,
-		repoUser: repoUser,
-	}
+func NewUserController() *UserController {
+	return &UserController{}
 }
-func (h *handler) Reqister(router *httprouter.Router) {
-	router.GET(usersURL, h.GetUserList)
-	router.GET(userURL, h.GetUserByUUID)
-	router.POST(usersURL, h.CreateUser)
-	router.DELETE(userURL, h.DeleteUserByUUID)
-	router.PUT(userURL, h.UpdateUserByUUID)
-}
-func (h *handler) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Здесь вы можете вызвать соответствующий метод из вашего хранилища для получения списка пользователей.
 	users, err := h.repoUser.FindAll(r.Context())
 	if err != nil {
@@ -51,7 +31,7 @@ func (h *handler) GetUserList(w http.ResponseWriter, r *http.Request, params htt
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(users)
 }
-func (h *handler) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлеките идентификатор пользователя из параметров URL.
 	userID := params.ByName("uuid")
 
@@ -68,7 +48,7 @@ func (h *handler) GetUserByUUID(w http.ResponseWriter, r *http.Request, params h
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
 }
-func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Раскодируйте тело запроса в нового пользователя.
 	var newUser model.User
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
@@ -89,7 +69,7 @@ func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, params http
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newUser)
 }
-func (h *handler) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлеките идентификатор пользователя из параметров URL.
 	userID := params.ByName("uuid")
 
@@ -103,7 +83,7 @@ func (h *handler) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, param
 	// Верните успешный ответ об удалении.
 	w.WriteHeader(http.StatusNoContent)
 }
-func (h *handler) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлеките идентификатор пользователя из параметров URL.
 	userID := params.ByName("uuid")
 

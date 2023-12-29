@@ -18,7 +18,7 @@ func NewItemController() *ItemController {
 }
 
 func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	items, err := h.modelItem.GetItemList(r.Context())
+	items, err := model.GetItemList(r.Context())
 	if err != nil {
 		h.logger.Errorf("failed to get items: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -57,7 +57,7 @@ func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, para
 	// Создаем пользователя с извлеченными данными
 
 	// Подставьте сюда свою логику работы с базой данных
-	if err := h.modelItem.CreateItem(r.Context(), &newItem); err != nil {
+	if err := model.CreateItem(r.Context(), &newItem); err != nil {
 		h.logger.Fatalf("failed to create item: %v", err)
 		return
 	}
