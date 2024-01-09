@@ -1,15 +1,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"go-server/internal/config"
-	user "go-server/internal/controllers/handlers/handlerUser"
-	item "go-server/internal/controllers/handlers/handleritem"
-	"go-server/internal/models"
-	it "go-server/internal/repositories/db/postgresItem"
-	us "go-server/internal/repositories/db/postgresUser"
-	"go-server/pkg/client/postgresql"
+	"go-server/internal/router"
 	"go-server/pkg/logging"
 	"net"
 	"net/http"
@@ -21,31 +15,9 @@ import (
 func main() {
 	logger := logging.GetLogger()
 	logger.Info("create router")
-	router := httprouter.New()
 
 	cfg := config.GetConfig()
-
-	PostgreSQLClient, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
-	if err != nil {
-		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
-	}
-	logger.Info("connected to PostgreSQL")
-
-	// repositoryUser := us.NewRepository(PostgreSQLClient, logger)
-	// logger.Info("connected to user repository")
-
-	repositoryItem := it.NewRepository(PostgreSQLClient, logger)
-	logger.Info("connected to item repository")
-
-	modelItem := model.NewModelItem(repositoryItem)
-
-	handler := item.NewHandler(logger, modelItem)
-	handler.Reqister(router)
-	logger.Info("registred item handler")
-
-	// handler = user.NewHandler(logger, modelUser)
-	// handler.Reqister(router)
-	// logger.Info("registred user handler")
+	router := router.GetRouter(cfg)
 
 	start(router, cfg)
 }

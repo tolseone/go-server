@@ -18,7 +18,7 @@ func NewItemController() *ItemController {
 }
 
 func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	items, err := model.GetItemList(r.Context())
+	items, err := model.LoadItems()
 	if err != nil {
 		h.logger.Errorf("failed to get items: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -48,7 +48,11 @@ func (h *ItemController) GetItemByUUID(w http.ResponseWriter, r *http.Request, p
 }
 func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлекаем данные из тела запроса
-	var newItem = model.NewItem() // ??? что прописывать
+	itemName := params.ByName("Name")
+	itemRarity := params.ByName("Rarity")
+	itemDescription := params.ByName("Description")
+
+	var newItem = model.NewItem(itemName, itemRarity, itemDescription)
 	if err := json.NewDecoder(r.Body).Decode(&newItem); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -57,7 +61,7 @@ func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, para
 	// Создаем пользователя с извлеченными данными
 
 	// Подставьте сюда свою логику работы с базой данных
-	if err := model.CreateItem(r.Context(), &newItem); err != nil {
+	if err := model.RegisterItem(newItem); err != nil {
 		h.logger.Fatalf("failed to create item: %v", err)
 		return
 	}
@@ -71,7 +75,7 @@ func (h *ItemController) DeleteItemByUUID(w http.ResponseWriter, r *http.Request
 	itemID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to delete the item by ID
-	if err := h.modelItem.DeleteItemByUUID(r.Context(), itemID); err != nil {
+	if err := model.DeleteItem(itemID); err != nil {
 		h.logger.Errorf("failed to delete item by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

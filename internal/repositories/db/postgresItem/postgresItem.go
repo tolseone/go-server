@@ -25,10 +25,10 @@ type ItemData struct {
 	Description string    `json:"description,omitempty"`
 }
 
-func NewRepository(client postgresql.Client, logger *logging.Logger) *RepositoryItem {
+func NewRepository(logger *logging.Logger) *RepositoryItem {
 	repo := new(RepositoryItem)
 	cfg := config.GetConfig()
-	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
+	_, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
 	if err != nil {
 		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
 	}
