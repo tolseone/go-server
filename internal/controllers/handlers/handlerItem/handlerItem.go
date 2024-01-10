@@ -6,6 +6,7 @@ import (
 	"go-server/pkg/logging"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -14,7 +15,9 @@ type ItemController struct {
 }
 
 func NewItemController() *ItemController {
-	return &ItemController{}
+	return &ItemController{
+		logger: logging.GetLogger(),
+	}
 }
 
 func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -53,18 +56,23 @@ func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, para
 	itemDescription := params.ByName("Description")
 
 	var newItem = model.NewItem(itemName, itemRarity, itemDescription)
+	if newItem == nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	if err := json.NewDecoder(r.Body).Decode(&newItem); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Создаем пользователя с извлеченными данными
-
 	// Подставьте сюда свою логику работы с базой данных
-	if err := model.RegisterItem(newItem); err != nil {
+	id, err := newItem.Save()
+	if err != nil {
 		h.logger.Fatalf("failed to create item: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	newItem.ItemId = id.(uuid.UUID)
 
 	// Возвращаем успешный статус и информацию о созданном предмете
 	w.Header().Set("Content-Type", "application/json")

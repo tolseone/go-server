@@ -2,10 +2,10 @@ package model
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/uuid"
 	"go-server/internal/repositories/db/postgresItem"
 	"go-server/pkg/logging"
-
-	"github.com/google/uuid"
 )
 
 type Item struct {
@@ -15,14 +15,18 @@ type Item struct {
 	Description string    `json:"description,omitempty"`
 }
 
-func (itm *Item) Save() error {
-	var data *db.ItemData
+func (itm *Item) Save() (interface{}, error) {
+	var data db.ItemData
 	data.Name = itm.Name
 	data.Rarity = itm.Rarity
 	data.Description = itm.Description
 
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	if itm.ItemId != uuid.Nil {
 		return repo.Update(context.TODO(), data)
 	} else {
@@ -45,9 +49,12 @@ func LoadItem(id string) (*Item, error) {
 		logger.Infof("Failed to load item: %v", err)
 		return &Item{}, err
 	}
-
-	itm := NewItem(data.(Item).Name, data.(Item).Rarity, data.(Item).Description)
-	return itm, nil
+	return &Item{
+		data.ItemId,
+		data.Name,
+		data.Rarity,
+		data.Description,
+	}, nil
 
 }
 
@@ -62,14 +69,15 @@ func LoadItems() ([]*Item, error) {
 
 	var itms []*Item
 	for _, itm := range data {
-		itms = append(itms, NewItem(itm.(Item).Name, itm.(Item).Rarity, itm.(Item).Description))
+		itms = append(itms, &Item{
+			itm.ItemId,
+			itm.Name,
+			itm.Rarity,
+			itm.Description,
+		})
 	}
 	return itms, nil
 
-}
-
-func RegisterItem(item *Item) error {
-	return item.Save()
 }
 
 func DeleteItem(id string) error {

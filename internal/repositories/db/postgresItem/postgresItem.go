@@ -26,19 +26,23 @@ type ItemData struct {
 }
 
 func NewRepository(logger *logging.Logger) *RepositoryItem {
-	repo := new(RepositoryItem)
 	cfg := config.GetConfig()
-	_, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
+	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
 	if err != nil {
 		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
 	}
 	logger.Info("connected to PostgreSQL")
 
+	repo := &RepositoryItem{
+		client: client,
+		logger: logger,
+	}
+
 	return repo
 }
 
 // Create implements item.Repository.
-func (r *RepositoryItem) Create(ctx context.Context, i interface{}) error {
+func (r *RepositoryItem) Create(ctx context.Context, i interface{}) (interface{}, error) {
 	q := `
 		INSERT INTO public.item (
 			id, 
@@ -53,18 +57,21 @@ func (r *RepositoryItem) Create(ctx context.Context, i interface{}) error {
 		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-	var itemData ItemData
+	itemData := i.(ItemData)
+
 	if err := r.client.QueryRow(ctx, q, itemData.Name, itemData.Rarity, itemData.Description).Scan(&itemData.ItemId); err != nil {
+		r.logger.Infof("Failed to create item: %v", itemData)
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 			r.logger.Error(newErr)
-			return newErr
+			return nil, newErr
 		}
-		return err
+		return nil, err
 	}
-	return nil
+	r.logger.Infof("Completed to create item: %v", itemData)
+	return itemData.ItemId, nil
 
 }
 
@@ -84,7 +91,7 @@ func (r *RepositoryItem) Delete(ctx context.Context, id string) error {
 }
 
 // FindAll implements item.Repository.
-func (r *RepositoryItem) FindAll(ctx context.Context) (i []interface{}, err error) {
+func (r *RepositoryItem) FindAll(ctx context.Context) ([]ItemData, error) {
 	q := `
         SELECT id, name, rarity, description FROM public.item
 	`
@@ -110,17 +117,11 @@ func (r *RepositoryItem) FindAll(ctx context.Context) (i []interface{}, err erro
 		return nil, err
 	}
 
-	// Преобразование []model.Item в []interface{}
-	result := make([]interface{}, len(items))
-	for i, item := range items {
-		result[i] = item
-	}
-
-	return result, nil
+	return items, nil
 }
 
 // FindOne implements item.Repository.
-func (r *RepositoryItem) FindOne(ctx context.Context, id string) (interface{}, error) {
+func (r *RepositoryItem) FindOne(ctx context.Context, id string) (ItemData, error) {
 	q := `
         SELECT id, name, rarity, description FROM public.item WHERE id = $1
 	`
@@ -136,7 +137,7 @@ func (r *RepositoryItem) FindOne(ctx context.Context, id string) (interface{}, e
 }
 
 // Update implements item.Repository.
-func (r *RepositoryItem) Update(ctx context.Context, item interface{}) error {
+func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interface{}, error) {
 	var updatedItem ItemData
 	q := `
 		UPDATE public.item
@@ -150,10 +151,10 @@ func (r *RepositoryItem) Update(ctx context.Context, item interface{}) error {
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	if _, err := r.client.Exec(ctx, q, updatedItem.Name, updatedItem.Rarity, updatedItem.Description, updatedItem.ItemId); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
