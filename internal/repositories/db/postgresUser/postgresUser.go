@@ -4,27 +4,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-server/internal/models"
-	"go-server/internal/repositories"
+	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type repository struct {
+type RepositoryUser struct {
 	client postgresql.Client
 	logger *logging.Logger
 }
 
-func formatQuery(q string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
+type UserData struct {
+	UserId   uuid.UUID `json:"user_id"`
+	Username string    `json:"username,omitempty"`
+	Email    string    `json:"email"`
+}
+
+func NewRepository(logger *logging.Logger) *RepositoryUser {
+	cfg := config.GetConfig()
+	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
+	if err != nil {
+		logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
+	}
+	logger.Info("connected to PostgreSQL")
+
+	repo := &RepositoryUser{
+		client: client,
+		logger: logger,
+	}
+
+	return repo
 }
 
 // Create implements user.Repository.
-func (r *repository) Create(ctx context.Context, u interface{}) error {
-	user := u.(*model.User)
+func (r *RepositoryUser) Create(ctx context.Context, u interface{}) (interface{}, error) {
 	q := `
 		INSERT INTO public.user (
 			id, 
@@ -39,30 +56,32 @@ func (r *repository) Create(ctx context.Context, u interface{}) error {
 		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-	if err := r.client.QueryRow(ctx, q, user.Username, user.Email).Scan(&user.UserId); err != nil {
+	userData := u.(UserData)
+
+	if err := r.client.QueryRow(ctx, q, userData.Username, userData.Email).Scan(&userData.UserId); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
 			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
 			r.logger.Error(newErr)
-			return newErr
+			return nil, newErr
 		}
-		return err
+		return nil, err
 
 	}
-	return nil
+	r.logger.Infof("Completed to create user: %v", userData)
+	return userData.UserId, nil
 
 }
 
 // Delete implements user.Repository.
-func (r *repository) Delete(ctx context.Context, id string) error {
+func (r *RepositoryUser) Delete(ctx context.Context, id string) error {
 	q := `
 		DELETE FROM public.user WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	_, err := r.client.Exec(ctx, q, id)
-	if err != nil {
+	if _, err := r.client.Exec(ctx, q, id); err != nil {
 		return err
 	}
 
@@ -70,7 +89,7 @@ func (r *repository) Delete(ctx context.Context, id string) error {
 }
 
 // FindAll implements user.Repository.
-func (r *repository) FindAll(ctx context.Context) (u []interface{}, err error) {
+func (r *RepositoryUser) FindAll(ctx context.Context) ([]UserData, error) {
 	q := `
         SELECT id, name, email FROM public.user
 	`
@@ -80,50 +99,43 @@ func (r *repository) FindAll(ctx context.Context) (u []interface{}, err error) {
 		return nil, err
 	}
 
-	users := make([]model.User, 0)
+	users := make([]UserData, 0)
 
 	for rows.Next() {
-		var u model.User
+		var us UserData
 
-		if err := rows.Scan(&u.UserId, &u.Username, &u.Email); err != nil {
+		if err := rows.Scan(&us.UserId, &us.Username, &us.Email); err != nil {
 			return nil, err
 		}
 
-		users = append(users, u)
+		users = append(users, us)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	// Преобразование []model.User в []interface{}
-	result := make([]interface{}, len(users))
-	for i, user := range users {
-		result[i] = user
-	}
-
-	return result, nil
+	return users, nil
 }
 
 // FindOne implements user.Repository.
-func (r *repository) FindOne(ctx context.Context, id string) (interface{}, error) {
+func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, error) {
 	q := `
         SELECT id, name, email FROM public.user WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	var u model.User
+	var u UserData
 	err := r.client.QueryRow(ctx, q, id).Scan(&u.UserId, &u.Username, &u.Email)
 	if err != nil {
-		return model.User{}, err
+		return UserData{}, err
 	}
 
 	return u, nil
 }
 
 // Update implements user.Repository.
-func (r *repository) Update(ctx context.Context, user interface{}) error {
-	u := user.(*model.User)
+func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interface{}, error) {
 	q := `
 		UPDATE public.user 
 		SET 
@@ -133,18 +145,15 @@ func (r *repository) Update(ctx context.Context, user interface{}) error {
 			id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+	updatedUser := user.(UserData)
 
-	_, err := r.client.Exec(ctx, q, u.UserId, u.Username, u.Email)
-	if err != nil {
-		return err
+	if _, err := r.client.Exec(ctx, q, updatedUser.UserId, updatedUser.Username, updatedUser.Email); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
-func NewRepository(client postgresql.Client, logger *logging.Logger) storage.Repository {
-	return &repository{
-		client: client,
-		logger: logger,
-	}
+func formatQuery(q string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }

@@ -4,7 +4,7 @@ import (
 	"go-server/internal/config"
 	"go-server/internal/controllers/handlers/handlerItem"
 	// "go-server/internal/controllers/handlers/handlerTrade"
-	// "go-server/internal/controllers/handlers/handlerUser"
+	"go-server/internal/controllers/handlers/handlerUser"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -18,8 +18,8 @@ const (
 	itemsURL = "/api/items"
 	itemURL  = "/api/items/:uuid"
 
-	// usersURL = "/api/users"
-	// userURL  = "/api/users/:uuid"
+	usersURL = "/api/users"
+	userURL  = "/api/users/:uuid"
 )
 
 func GetRouter(cfg *config.Config) *httprouter.Router {
@@ -27,7 +27,7 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 
 	// tradeController := handlerTrade.NewTradeController()
 	itemController := handlerItem.NewItemController()
-	// userController := handlerUser.NewUserController()
+	userController := handlerUser.NewUserController()
 
 	// router.GET(itemtradesURL, tradeController.GetTradesByItemUUID)
 	// router.GET(tradesURL, tradeController.GetTradeList)
@@ -42,11 +42,11 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 	router.POST(itemsURL, itemController.CreateItem)
 	router.DELETE(itemURL, itemController.DeleteItemByUUID)
 
-	// router.GET(usersURL, userController.GetUserList)
-	// router.GET(userURL, userController.GetUserByUUID)
-	// router.POST(usersURL, userController.CreateUser)
-	// router.DELETE(userURL, userController.DeleteUserByUUID)
-	// router.PUT(userURL, userController.UpdateUserByUUID)
+	router.GET(usersURL, userController.GetUserList)
+	router.GET(userURL, userController.GetUserByUUID)
+	router.POST(usersURL, userController.CreateUser)
+	router.DELETE(userURL, userController.DeleteUserByUUID)
+	router.PUT(userURL, userController.UpdateUserByUUID)
 
 	return router
 }

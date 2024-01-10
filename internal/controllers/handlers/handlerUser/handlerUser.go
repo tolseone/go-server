@@ -15,11 +15,13 @@ type UserController struct {
 }
 
 func NewUserController() *UserController {
-	return &UserController{}
+	return &UserController{
+		logger: logging.GetLogger(),
+	}
 }
 func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Здесь вы можете вызвать соответствующий метод из вашего хранилища для получения списка пользователей.
-	users, err := h.repoUser.FindAll(r.Context())
+	users, err := model.LoadUsers()
 	if err != nil {
 		h.logger.Errorf("ошибка при получении списка пользователей: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -36,7 +38,7 @@ func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, p
 	userID := params.ByName("uuid")
 
 	// Вызовите соответствующий метод из вашего хранилища для получения пользователя по идентификатору.
-	user, err := h.repoUser.FindOne(r.Context(), userID)
+	user, err := model.LoadUser(userID)
 	if err != nil {
 		h.logger.Errorf("ошибка при получении пользователя по UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -50,19 +52,27 @@ func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, p
 }
 func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Раскодируйте тело запроса в нового пользователя.
-	var newUser model.User
+	userName := params.ByName("Username")
+	email := params.ByName("Email")
+
+	var newUser = model.NewUser(userName, email)
+	if newUser == nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-		h.logger.Errorf("ошибка при декодировании тела запроса: %v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Вызовите соответствующий метод из вашего хранилища для создания пользователя.
-	if err := h.repoUser.Create(r.Context(), &newUser); err != nil {
+	id, err := newUser.Save()
+	if err != nil {
 		h.logger.Errorf("ошибка при создании пользователя: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	newUser.UserId = id.(uuid.UUID)
 
 	// Верните созданного пользователя в ответе.
 	w.Header().Set("Content-Type", "application/json")
@@ -74,7 +84,7 @@ func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request
 	userID := params.ByName("uuid")
 
 	// Вызовите соответствующий метод из вашего хранилища для удаления пользователя по идентификатору.
-	if err := h.repoUser.Delete(r.Context(), userID); err != nil {
+	if err := model.DeleteUser(userID); err != nil {
 		h.logger.Errorf("ошибка при удалении пользователя по UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -88,7 +98,7 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 	userID := params.ByName("uuid")
 
 	// Раскодируйте тело запроса в обновленного пользователя.
-	var updatedUser model.User
+	var updatedUser *model.User
 	if err := json.NewDecoder(r.Body).Decode(&updatedUser); err != nil {
 		h.logger.Errorf("ошибка при декодировании тела запроса: %v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -104,15 +114,18 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 	}
 
 	// Устанавливаем идентификатор пользователя в соответствии с параметром URL.
-	updatedUser.UserId = parsedUserID
+	updatedUser.UserId = parsedUserID // всё дошло успешно
 
 	// Вызовите соответствующий метод из вашего хранилища для обновления пользователя.
-	if err := h.repoUser.Update(r.Context(), &updatedUser); err != nil {
+	_, err = updatedUser.Save()
+	if err != nil {
 		h.logger.Errorf("ошибка при обновлении пользователя по UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	// Верните успешный ответ об обновлении.
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // which status should i use?
+	json.NewEncoder(w).Encode(updatedUser)
 }
