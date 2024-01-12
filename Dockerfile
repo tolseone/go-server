@@ -1,14 +1,20 @@
-FROM golang:1.10 AS build
-WORKDIR /go/src
-COPY go ./go
-COPY main.go .
+FROM golang:1.21-alpine AS builder
 
-ENV CGO_ENABLED=0
-RUN go get -d -v ./...
+WORKDIR /usr/local/src
 
-RUN go build -a -installsuffix cgo -o swagger .
+RUN apk --no-cache add bash git make gcc gettext musl-dev
 
-FROM scratch AS runtime
-COPY --from=build /go/src/swagger ./
-EXPOSE 8080/tcp
-ENTRYPOINT ["./swagger"]
+# dependencies
+COPY ["go.mod", "go.sum", "./"]
+RUN go mod download
+
+# build
+COPY . ./
+RUN go build -o ./bin/app cmd/main/main.go
+
+FROM alpine AS runner
+
+COPY --from=builder /usr/local/src/bin/app /
+COPY config.yaml /config.yaml
+
+CMD ["/app"]

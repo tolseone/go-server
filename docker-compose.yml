@@ -1,0 +1,27 @@
+---
+services:
+  app:
+    image: go-service:local
+    container_name: ps-backend
+    ports:
+      - 1234:1234
+    depends_on:
+      - postgresql
+    networks:
+      - ps
+
+  postgresql:
+    image: postgres:14-alpine
+    container_name: ps-psql
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - ps
+    
+networks:
+  ps:
+
