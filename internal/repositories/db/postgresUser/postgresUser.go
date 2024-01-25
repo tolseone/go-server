@@ -133,6 +133,20 @@ func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, erro
 
 	return u, nil
 }
+func (r *RepositoryUser) FindUserByEmail(ctx context.Context, email string) (UserData, error) {
+	q := `
+        SELECT id, name, email FROM public.user WHERE email = $1
+    `
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	var u UserData
+	err := r.client.QueryRow(ctx, q, email).Scan(&u.UserId, &u.Username, &u.Email)
+	if err != nil {
+		return UserData{}, err
+	}
+
+	return u, nil
+}
 
 // Update implements user.Repository.
 func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interface{}, error) {

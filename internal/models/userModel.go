@@ -76,6 +76,20 @@ func LoadUsers() ([]*User, error) {
 	return usrs, nil
 
 }
+func LoadUserByEmail(email string) (*User, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepository(logger)
+	data, err := repo.FindUserByEmail(context.TODO(), email)
+	if err != nil {
+		logger.Infof("Failed to load User by email: %v", err)
+		return &User{}, err
+	}
+	return &User{
+		data.UserId,
+		data.Username,
+		data.Email,
+	}, nil
+}
 
 func DeleteUser(id string) error {
 	logger := logging.GetLogger()

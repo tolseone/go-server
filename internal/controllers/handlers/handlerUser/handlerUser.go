@@ -6,17 +6,20 @@ import (
 	"go-server/pkg/logging"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 )
 
 type UserController struct {
-	logger *logging.Logger
+	logger    *logging.Logger
+	validator *validator.Validate
 }
 
 func NewUserController() *UserController {
 	return &UserController{
-		logger: logging.GetLogger(),
+		logger:    logging.GetLogger(),
+		validator: validator.New(),
 	}
 }
 func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -65,6 +68,18 @@ func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
+	if err := h.validateData(newUser); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Проверка на существование пользователя с такими данными
+	existingUser, err := model.LoadUserByEmail(newUser.Email)
+	if err == nil && existingUser != nil {
+		http.Error(w, "User with this email already exists", http.StatusConflict)
+		return
+	}
+
 	// Вызовите соответствующий метод из вашего хранилища для создания пользователя.
 	id, err := newUser.Save()
 	if err != nil {
@@ -105,6 +120,11 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if err := h.validateData(updatedUser); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// Парсим идентификатор пользователя из строки в формате UUID.
 	parsedUserID, err := uuid.Parse(userID)
 	if err != nil {
@@ -128,4 +148,8 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // which status should i use?
 	json.NewEncoder(w).Encode(updatedUser)
+}
+
+func (h *UserController) validateData(data interface{}) error {
+	return h.validator.Struct(data)
 }
