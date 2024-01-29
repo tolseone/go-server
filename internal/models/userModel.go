@@ -11,8 +11,8 @@ import (
 
 type User struct {
 	UserId   uuid.UUID `json:"user_id"`
-	Username string    `json:"username,omitempty"`
-	Email    string    `json:"email"`
+	Username string    `json:"username,omitempty" validate:"required,min=3,max=100"`
+	Email    string    `json:"email" validate:"required,email,min=6,max=100"`
 }
 
 func (usr *User) Save() (interface{}, error) {

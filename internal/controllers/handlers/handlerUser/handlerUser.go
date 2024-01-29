@@ -2,6 +2,7 @@ package handlerUser
 
 import (
 	"encoding/json"
+	"fmt"
 	"go-server/internal/models"
 	"go-server/pkg/logging"
 	"net/http"
@@ -23,7 +24,7 @@ func NewUserController() *UserController {
 	}
 }
 func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Здесь вы можете вызвать соответствующий метод из вашего хранилища для получения списка пользователей.
+	// Вызов метода для получения списка пользователей.
 	users, err := model.LoadUsers()
 	if err != nil {
 		h.logger.Errorf("ошибка при получении списка пользователей: %v", err)
@@ -31,10 +32,18 @@ func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	// Преобразуйте пользователей в JSON и отправьте ответ.
+	// Преобразование пользователей в JSON.
+	userJSON, err := json.Marshal(users)
+	if err != nil {
+		h.logger.Errorf("ошибка при преобразовании пользователей в JSON: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправка ответа.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	w.Write(userJSON)
 }
 func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлеките идентификатор пользователя из параметров URL.
@@ -54,33 +63,30 @@ func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, p
 	json.NewEncoder(w).Encode(user)
 }
 func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Раскодируйте тело запроса в нового пользователя.
-	userName := params.ByName("Username")
-	email := params.ByName("Email")
+	// Создание объекта нового пользователя.
+	var newUser *model.User
 
-	var newUser = model.NewUser(userName, email)
-	if newUser == nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	// Декодирование данных из запроса в нового пользователя.
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validateData(newUser); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	// Валидация данных, которые вводит пользователь.
+	if err := h.validator.Struct(newUser); err != nil {
+		errors := err.(validator.ValidationErrors)
+		http.Error(w, fmt.Sprintf("Validation error: %s", errors), http.StatusBadRequest)
 		return
 	}
 
-	// Проверка на существование пользователя с такими данными
+	// Проверка на существование пользователя с такими данными.
 	existingUser, err := model.LoadUserByEmail(newUser.Email)
 	if err == nil && existingUser != nil {
 		http.Error(w, "User with this email already exists", http.StatusConflict)
 		return
 	}
 
-	// Вызовите соответствующий метод из вашего хранилища для создания пользователя.
+	// Вызов метода для создания пользователя.
 	id, err := newUser.Save()
 	if err != nil {
 		h.logger.Errorf("ошибка при создании пользователя: %v", err)
@@ -89,16 +95,16 @@ func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, para
 	}
 	newUser.UserId = id.(uuid.UUID)
 
-	// Верните созданного пользователя в ответе.
+	// Возвращаем созданного пользователя в ответе.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newUser)
 }
 func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Извлеките идентификатор пользователя из параметров URL.
+	// Извлекаем uuid пользователя из параметров URL
 	userID := params.ByName("uuid")
 
-	// Вызовите соответствующий метод из вашего хранилища для удаления пользователя по идентификатору.
+	// Вызов метода для удаления пользователя по идентификатору.
 	if err := model.DeleteUser(userID); err != nil {
 		h.logger.Errorf("ошибка при удалении пользователя по UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -107,6 +113,7 @@ func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request
 
 	// Верните успешный ответ об удалении.
 	w.WriteHeader(http.StatusNoContent)
+	w.Write([]byte("Удаление пользователя с UUID " + userID + " прошло успешно"))
 }
 func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Извлеките идентификатор пользователя из параметров URL.
@@ -120,8 +127,9 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.validateData(updatedUser); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := h.validator.Struct(updatedUser); err != nil {
+		errors := err.(validator.ValidationErrors)
+		http.Error(w, fmt.Sprintf("Validation error: %s", errors), http.StatusBadRequest)
 		return
 	}
 
@@ -148,8 +156,4 @@ func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // which status should i use?
 	json.NewEncoder(w).Encode(updatedUser)
-}
-
-func (h *UserController) validateData(data interface{}) error {
-	return h.validator.Struct(data)
 }
