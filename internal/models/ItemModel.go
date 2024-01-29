@@ -10,9 +10,9 @@ import (
 
 type Item struct {
 	ItemId      uuid.UUID `json:"item_id"`
-	Name        string    `json:"name"`
-	Rarity      string    `json:"rarity"`
-	Description string    `json:"description,omitempty"`
+	Name        string    `json:"name" validate:"required,min=3,max=100"`
+	Rarity      string    `json:"rarity" validate:"required,min=3,max=20"`
+	Description string    `json:"description,omitempty" validate:"required,min=3,max=1000"`
 }
 
 func (itm *Item) Save() (interface{}, error) {
