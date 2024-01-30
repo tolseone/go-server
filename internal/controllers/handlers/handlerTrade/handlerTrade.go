@@ -24,15 +24,17 @@ func NewTradeController() *TradeController {
 }
 
 func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Извлекаем данные из тела запроса
-	var tradeData model.Trade
-	if err := json.NewDecoder(r.Body).Decode(&tradeData); err != nil {
+	// Создание объекта новой сделки.
+	var newTrade *model.Trade
+
+	// Декодируем данные из тела запроса в новую сделку.
+	if err := json.NewDecoder(r.Body).Decode(&newTrade); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Валидация данных
-	if err := h.validator.Struct(tradeData); err != nil {
+	// Валидация данных, которвые вводит пользователь
+	if err := h.validator.Struct(newTrade); err != nil {
 		// Обработка ошибок валидации
 		errors := err.(validator.ValidationErrors)
 		for _, e := range errors {
@@ -44,18 +46,18 @@ func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	// Подставьте сюда свою логику работы с базой данных
-	id, err := tradeData.Save()
+	id, err := newTrade.Save()
 	if err != nil {
 		h.logger.Fatalf("failed to create trade: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	tradeData.TradeID = id.(uuid.UUID)
+	newTrade.TradeID = id.(uuid.UUID)
 
 	// Возвращаем успешный статус и информацию о созданной сделке
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(tradeData)
+	json.NewEncoder(w).Encode(newTrade)
 }
 
 func (h *TradeController) GetTradeList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -91,7 +93,7 @@ func (h *TradeController) GetTradesByItemUUID(w http.ResponseWriter, r *http.Req
 }
 func (h *TradeController) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Extract trade ID from URL
-	tradeID := params.ByName("trade_id")
+	tradeID := params.ByName("uuid")
 
 	// Call the corresponding method from your repository to delete the trade by ID
 	if err := model.DeleteTradeByID(tradeID); err != nil {

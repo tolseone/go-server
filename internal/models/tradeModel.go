@@ -3,21 +3,35 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"go-server/internal/repositories/db/postgresTrade"
 	"go-server/pkg/logging"
+	"time"
+
+	"github.com/google/uuid"
 )
 
+// Trade представляет структуру сделки
 type Trade struct {
 	TradeID        uuid.UUID `json:"trade_id"`
-	UserID         uuid.UUID `json:"user_id"`
-	OfferedItems   []*Item   `json:"offered_items"`
-	RequestedItems []*Item   `json:"requested_items"`
+	UserID         uuid.UUID `json:"user_id" validate:"required"`
+	Status         string    `json:"status"`
+	Date           time.Time `json:"date"`
+	OfferedItems   []*Item   `json:"offered_items" validate:"required"`
+	RequestedItems []*Item   `json:"requested_items" validate:"required"`
+}
+
+// TradeItem представляет структуру элемента сделки
+type TradeItem struct {
+	ID         uuid.UUID `json:"id"`
+	TradeID    uuid.UUID `json:"trade_id"`
+	ItemID     uuid.UUID `json:"item_id"`
+	ItemStatus string    `json:"item_status"` // может быть "offered" или "requested"
 }
 
 func NewTrade(userID uuid.UUID, offeredItems, requestedItems []*Item) *Trade {
 	return &Trade{
 		UserID:         userID,
+		Status:         "pending",
 		OfferedItems:   offeredItems,
 		RequestedItems: requestedItems,
 	}
@@ -26,15 +40,23 @@ func NewTrade(userID uuid.UUID, offeredItems, requestedItems []*Item) *Trade {
 func (t *Trade) Save() (interface{}, error) {
 	var data db.TradeData
 	data.UserID = t.UserID
-	data.OfferedItems = make([]uuid.UUID, len(t.OfferedItems))
-	data.RequestedItems = make([]uuid.UUID, len(t.RequestedItems))
+	data.Status = t.Status
+	data.Date = t.Date
+	data.OfferedItems = make([]db.TradeItem, len(t.OfferedItems))
+	data.RequestedItems = make([]db.TradeItem, len(t.RequestedItems))
 
 	for i, item := range t.OfferedItems {
-		data.OfferedItems[i] = item.ItemId
+		data.OfferedItems[i] = db.TradeItem{
+			ItemID:     item.ItemId,
+			ItemStatus: "offered",
+		}
 	}
 
 	for i, item := range t.RequestedItems {
-		data.RequestedItems[i] = item.ItemId
+		data.RequestedItems[i] = db.TradeItem{
+			ItemID:     item.ItemId,
+			ItemStatus: "requested",
+		}
 	}
 
 	logger := logging.GetLogger()
@@ -73,6 +95,8 @@ func LoadTradeList() ([]*Trade, error) {
 		trades = append(trades, &Trade{
 			tradeData.TradeID,
 			tradeData.UserID,
+			tradeData.Status,
+			tradeData.Date,
 			offeredItems,
 			requestedItems,
 		})
@@ -105,6 +129,8 @@ func LoadTradeByID(tradeID string) (*Trade, error) {
 	return &Trade{
 		data.TradeID,
 		data.UserID,
+		data.Status,
+		data.Date,
 		offeredItems,
 		requestedItems,
 	}, nil
@@ -146,6 +172,8 @@ func LoadTradesByItemUUID(itemID string) ([]*Trade, error) {
 		trades = append(trades, &Trade{
 			trade.TradeID,
 			trade.UserID,
+			trade.Status,
+			trade.Date,
 			offeredItems,
 			requestedItems,
 		})
@@ -204,6 +232,8 @@ func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 		trades = append(trades, &Trade{
 			trade.TradeID,
 			trade.UserID,
+			trade.Status,
+			trade.Date,
 			offeredItems,
 			requestedItems,
 		})
@@ -211,13 +241,13 @@ func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 	return trades, nil
 }
 
-func loadItems(itemIDs []uuid.UUID) ([]*Item, error) {
+func loadItems(tradeItems []db.TradeItem) ([]*Item, error) {
 	logger := logging.GetLogger()
 	var items []*Item
 
 	// Используем метод LoadItem из modelItem для каждого itemID
-	for _, itemID := range itemIDs {
-		item, err := LoadItem(itemID.String())
+	for _, tradeItem := range tradeItems {
+		item, err := LoadItem(tradeItem.ItemID.String())
 		if err != nil {
 			logger.Infof("Failed to load item: %v", err)
 			return []*Item{}, err
