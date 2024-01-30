@@ -42,7 +42,7 @@ func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, par
 	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(itemJSON)
+	w.Write(itemJSON)
 }
 func (h *ItemController) GetItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("uuid")
