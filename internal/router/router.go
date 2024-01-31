@@ -25,28 +25,28 @@ const (
 func GetRouter(cfg *config.Config) *httprouter.Router {
 	router := httprouter.New()
 
-	tradeController := handlerTrade.NewTradeController()
-	itemController := handlerItem.NewItemController()
-	userController := handlerUser.NewUserController()
+	tradeHandler := handlerTrade.NewTradeHandler()
+	itemHandler := handlerItem.NewItemHandler()
+	userHandler := handlerUser.NewUserHandler()
 
-	router.GET(itemtradesURL, tradeController.GetTradesByItemUUID)
-	router.GET(tradesURL, tradeController.GetTradeList)
-	router.POST(tradesURL, tradeController.CreateTrade)
-	router.DELETE(tradeURL, tradeController.DeleteTradeByUUID)
-	router.GET(tradeURL, tradeController.GetTradeByTradeUUID)
-	router.PUT(tradeURL, tradeController.UpdateTradeByUUID)
-	router.GET(usertradesURL, tradeController.GetTradesByUserUUID)
+	router.GET(itemtradesURL, tradeHandler.GetTradesByItemUUID)
+	router.GET(tradesURL, tradeHandler.GetTradeList)
+	router.POST(tradesURL, tradeHandler.CreateTrade)
+	router.DELETE(tradeURL, tradeHandler.DeleteTradeByUUID)
+	router.GET(tradeURL, tradeHandler.GetTradeByTradeUUID)
+	router.PUT(tradeURL, tradeHandler.UpdateTradeByUUID)
+	router.GET(usertradesURL, tradeHandler.GetTradesByUserUUID)
 
-	router.GET(itemsURL, itemController.GetItemList)
-	router.GET(itemURL, itemController.GetItemByUUID)
-	router.POST(itemsURL, itemController.CreateItem)
-	router.DELETE(itemURL, itemController.DeleteItemByUUID)
+	router.GET(itemsURL, itemHandler.GetItemList)
+	router.GET(itemURL, itemHandler.GetItemByUUID)
+	router.POST(itemsURL, itemHandler.CreateItem)
+	router.DELETE(itemURL, itemHandler.DeleteItemByUUID)
 
-	router.GET(usersURL, userController.GetUserList)
-	router.GET(userURL, userController.GetUserByUUID)
-	router.POST(usersURL, userController.CreateUser)
-	router.DELETE(userURL, userController.DeleteUserByUUID)
-	router.PUT(userURL, userController.UpdateUserByUUID)
+	router.GET(usersURL, userHandler.GetUserList)
+	router.GET(userURL, userHandler.GetUserByUUID)
+	router.POST(usersURL, userHandler.CreateUser)
+	router.DELETE(userURL, userHandler.DeleteUserByUUID)
+	router.PUT(userURL, userHandler.UpdateUserByUUID)
 
 	return router
 }

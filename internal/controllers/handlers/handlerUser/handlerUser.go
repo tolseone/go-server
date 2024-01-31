@@ -13,19 +13,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type UserController struct {
+type UserHandler struct {
 	logger    *logging.Logger
 	validator *validator.Validate
 }
 
-func NewUserController() *UserController {
-	return &UserController{
+func NewUserHandler() *UserHandler {
+	return &UserHandler{
 		logger:    logging.GetLogger(),
 		validator: validator.New(),
 	}
 }
 
-func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserHandler) GetUserList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	users, err := model.LoadUsers()
 	if err != nil {
 		h.logger.Errorf("ошибка при получении списка пользователей: %v", err)
@@ -45,7 +45,7 @@ func (h *UserController) GetUserList(w http.ResponseWriter, r *http.Request, par
 	w.Write(userJSON)
 }
 
-func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserHandler) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	userID := params.ByName("uuid")
 
 	user, err := model.LoadUser(userID)
@@ -60,7 +60,7 @@ func (h *UserController) GetUserByUUID(w http.ResponseWriter, r *http.Request, p
 	json.NewEncoder(w).Encode(user)
 }
 
-func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	var newUser *model.User
 
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
@@ -93,7 +93,7 @@ func (h *UserController) CreateUser(w http.ResponseWriter, r *http.Request, para
 	json.NewEncoder(w).Encode(newUser)
 }
 
-func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserHandler) DeleteUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	userID := params.ByName("uuid")
 
 	if err := model.DeleteUser(userID); err != nil {
@@ -106,7 +106,7 @@ func (h *UserController) DeleteUserByUUID(w http.ResponseWriter, r *http.Request
 	w.Write([]byte("Удаление пользователя с UUID " + userID + " прошло успешно"))
 }
 
-func (h *UserController) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *UserHandler) UpdateUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	userID := params.ByName("uuid")
 
 	var updatedUser *model.User

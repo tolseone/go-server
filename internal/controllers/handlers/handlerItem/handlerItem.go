@@ -12,19 +12,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type ItemController struct {
+type ItemHandler struct {
 	logger    *logging.Logger
 	validator *validator.Validate
 }
 
-func NewItemController() *ItemController {
-	return &ItemController{
+func NewItemHandler() *ItemHandler {
+	return &ItemHandler{
 		logger:    logging.GetLogger(),
 		validator: validator.New(),
 	}
 }
 
-func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemHandler) GetItemList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	items, err := model.LoadItems()
 	if err != nil {
 		h.logger.Errorf("failed to get items: %v", err)
@@ -44,7 +44,7 @@ func (h *ItemController) GetItemList(w http.ResponseWriter, r *http.Request, par
 	w.Write(itemJSON)
 }
 
-func (h *ItemController) GetItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemHandler) GetItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("uuid")
 
 	item, err := model.LoadItem(itemID)
@@ -60,7 +60,7 @@ func (h *ItemController) GetItemByUUID(w http.ResponseWriter, r *http.Request, p
 	json.NewEncoder(w).Encode(item)
 }
 
-func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	var newItem *model.Item
 
 	if err := json.NewDecoder(r.Body).Decode(&newItem); err != nil {
@@ -90,7 +90,7 @@ func (h *ItemController) CreateItem(w http.ResponseWriter, r *http.Request, para
 	json.NewEncoder(w).Encode(newItem)
 }
 
-func (h *ItemController) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *ItemHandler) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("uuid")
 
 	if err := model.DeleteItem(itemID); err != nil {

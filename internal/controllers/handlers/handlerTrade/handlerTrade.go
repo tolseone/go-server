@@ -12,19 +12,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type TradeController struct {
+type TradeHandler struct {
 	logger    *logging.Logger
 	validator *validator.Validate
 }
 
-func NewTradeController() *TradeController {
-	return &TradeController{
+func NewTradeHandler() *TradeHandler {
+	return &TradeHandler{
 		logger:    logging.GetLogger(),
 		validator: validator.New(),
 	}
 }
 
-func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) CreateTrade(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	var newTrade *model.Trade
 
 	if err := json.NewDecoder(r.Body).Decode(&newTrade); err != nil {
@@ -55,7 +55,7 @@ func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, pa
 	json.NewEncoder(w).Encode(newTrade)
 }
 
-func (h *TradeController) GetTradeList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) GetTradeList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	trades, err := model.LoadTradeList()
 	if err != nil {
 		h.logger.Errorf("failed to get trades: %v", err)
@@ -68,7 +68,7 @@ func (h *TradeController) GetTradeList(w http.ResponseWriter, r *http.Request, p
 	json.NewEncoder(w).Encode(trades)
 }
 
-func (h *TradeController) GetTradesByItemUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) GetTradesByItemUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	itemID := params.ByName("item_id")
 
 	trades, err := model.LoadTradesByItemUUID(itemID)
@@ -83,7 +83,7 @@ func (h *TradeController) GetTradesByItemUUID(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(trades)
 }
 
-func (h *TradeController) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	tradeID := params.ByName("uuid")
 
 	if err := model.DeleteTradeByID(tradeID); err != nil {
@@ -95,7 +95,7 @@ func (h *TradeController) DeleteTradeByUUID(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *TradeController) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	tradeID := params.ByName("trade_id")
 
 	trade, err := model.LoadTradeByID(tradeID)
@@ -110,7 +110,7 @@ func (h *TradeController) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(trade)
 }
 
-func (h *TradeController) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	tradeID := params.ByName("trade_id")
 
 	var updateData *model.Trade
@@ -138,7 +138,7 @@ func (h *TradeController) UpdateTradeByUUID(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(updatedTrade)
 }
 
-func (h *TradeController) GetTradesByUserUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (h *TradeHandler) GetTradesByUserUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	userID := params.ByName("user_id")
 
 	trades, err := model.LoadTradesByUserUUID(userID)
