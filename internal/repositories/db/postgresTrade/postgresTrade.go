@@ -1,12 +1,13 @@
 package db
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
+	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -41,12 +42,10 @@ func NewRepository(logger *logging.Logger) *RepositoryTrade {
 	}
 	logger.Info("connected to PostgreSQL")
 
-	repo := &RepositoryTrade{
+	return &RepositoryTrade{
 		client: client,
 		logger: logger,
 	}
-
-	return repo
 }
 
 func (r *RepositoryTrade) Create(ctx context.Context, data TradeData) (interface{}, error) {
@@ -115,13 +114,14 @@ func (r *RepositoryTrade) Create(ctx context.Context, data TradeData) (interface
 	return data.TradeID, nil
 }
 
-func formatQuery(q string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
-}
-
 func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 	q := `
-        SELECT id, user_id, status, date FROM public.trade
+        SELECT 
+			id, 
+			user_id, 
+			status, 
+			date 
+		FROM public.trade
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q)
@@ -138,7 +138,6 @@ func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 			return nil, err
 		}
 
-		// Используйте функцию loadTradeItems для загрузки OfferedItems и RequestedItems
 		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
 		if err != nil {
 			return nil, err
@@ -162,10 +161,15 @@ func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 	return trades, nil
 }
 
-// FindOne реализует trade.Repository.
 func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, error) {
 	q := `
-        SELECT id, user_id, status, date FROM public.trade WHERE id = $1
+        SELECT 
+			id, 
+			user_id, 
+			status, 
+			date 
+		FROM public.trade 
+		WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -175,7 +179,6 @@ func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, er
 		return TradeData{}, err
 	}
 
-	// Используйте функцию loadTradeItems для загрузки OfferedItems и RequestedItems
 	offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
 	if err != nil {
 		return TradeData{}, err
@@ -192,11 +195,18 @@ func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, er
 	return td, nil
 }
 
-// FindByItemUUID реализует trade.Repository.
 func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]TradeData, error) {
 	q := `
-        SELECT id, user_id, status, date FROM public.trade
-		WHERE $1 = ANY(offered_items) OR $1 = ANY(requested_items)
+        SELECT 
+			id, 
+			user_id, 
+			status, 
+			date 
+		FROM public.trade
+		WHERE 
+			$1 = ANY(offered_items) 
+			OR 
+			$1 = ANY(requested_items)
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q, itemID)
@@ -213,7 +223,6 @@ func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]
 			return nil, err
 		}
 
-		// Используйте функцию loadTradeItems для загрузки OfferedItems и RequestedItems
 		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
 		if err != nil {
 			return nil, err
@@ -237,7 +246,6 @@ func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]
 	return trades, nil
 }
 
-// Update реализует trade.Repository.
 func (r *RepositoryTrade) Update(ctx context.Context, tradeID string, offeredItems, requestedItems []uuid.UUID) error {
 	q := `
 		UPDATE public.trade
@@ -256,7 +264,6 @@ func (r *RepositoryTrade) Update(ctx context.Context, tradeID string, offeredIte
 	return nil
 }
 
-// FindByUserUUID реализует trade.Repository.
 func (r *RepositoryTrade) FindByUserUUID(ctx context.Context, userID string) ([]TradeData, error) {
 	q := `
         SELECT id, user_id, status, date FROM public.trade
@@ -277,7 +284,6 @@ func (r *RepositoryTrade) FindByUserUUID(ctx context.Context, userID string) ([]
 			return nil, err
 		}
 
-		// Используйте функцию loadTradeItems для загрузки OfferedItems и RequestedItems
 		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
 		if err != nil {
 			return nil, err
@@ -301,11 +307,12 @@ func (r *RepositoryTrade) FindByUserUUID(ctx context.Context, userID string) ([]
 	return trades, nil
 }
 
-// Delete реализует trade.Repository.
 func (r *RepositoryTrade) Delete(ctx context.Context, tradeID string) error {
 	q := `
-		DELETE FROM public.trade
-		WHERE id = $1
+		DELETE 
+		FROM public.trade
+		WHERE 
+			id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -318,7 +325,14 @@ func (r *RepositoryTrade) Delete(ctx context.Context, tradeID string) error {
 
 func loadTradeItems(ctx context.Context, client postgresql.Client, logger *logging.Logger, tradeID uuid.UUID, itemStatus string) ([]TradeItem, error) {
 	q := `
-        SELECT item_id, item_status FROM public.trade_item WHERE trade_id = $1 AND item_status = $2
+        SELECT
+			item_id, 
+			item_status 
+		FROM public.trade_item 
+		WHERE 
+			trade_id = $1 
+		AND 
+			item_status = $2
 	`
 	logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -343,4 +357,8 @@ func loadTradeItems(ctx context.Context, client postgresql.Client, logger *loggi
 	}
 
 	return tradeItems, nil
+}
+
+func formatQuery(q string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }

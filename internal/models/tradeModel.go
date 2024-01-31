@@ -1,16 +1,16 @@
 package model
 
 import (
-	"context"
-	"fmt"
 	"go-server/internal/repositories/db/postgresTrade"
 	"go-server/pkg/logging"
+
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-// Trade представляет структуру сделки
 type Trade struct {
 	TradeID        uuid.UUID `json:"trade_id"`
 	UserID         uuid.UUID `json:"user_id" validate:"required"`
@@ -20,12 +20,12 @@ type Trade struct {
 	RequestedItems []*Item   `json:"requested_items" validate:"required"`
 }
 
-// TradeItem представляет структуру элемента сделки
+// TradeItem is structure of item in trade.
 type TradeItem struct {
 	ID         uuid.UUID `json:"id"`
 	TradeID    uuid.UUID `json:"trade_id"`
 	ItemID     uuid.UUID `json:"item_id"`
-	ItemStatus string    `json:"item_status"` // может быть "offered" или "requested"
+	ItemStatus string    `json:"item_status"` // can be "offered" или "requested"
 }
 
 func NewTrade(userID uuid.UUID, offeredItems, requestedItems []*Item) *Trade {
@@ -38,6 +38,13 @@ func NewTrade(userID uuid.UUID, offeredItems, requestedItems []*Item) *Trade {
 }
 
 func (t *Trade) Save() (interface{}, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	var data db.TradeData
 	data.UserID = t.UserID
 	data.Status = t.Status
@@ -59,18 +66,17 @@ func (t *Trade) Save() (interface{}, error) {
 		}
 	}
 
-	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
-	if repo == nil {
-		return nil, fmt.Errorf("failed to create repository")
-	}
-
 	return repo.Create(context.TODO(), data)
 }
 
 func LoadTradeList() ([]*Trade, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindAll(context.TODO())
 	if err != nil {
 		logger.Infof("Failed to load trades: %v", err)
@@ -79,7 +85,6 @@ func LoadTradeList() ([]*Trade, error) {
 
 	var trades []*Trade
 	for _, tradeData := range data {
-		// Используем функцию loadItems для OfferedItems и RequestedItems
 		offeredItems, err := loadItems(tradeData.OfferedItems)
 		if err != nil {
 			logger.Infof("Failed to load offered items for trade: %v", err)
@@ -107,13 +112,17 @@ func LoadTradeList() ([]*Trade, error) {
 func LoadTradeByID(tradeID string) (*Trade, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindOne(context.TODO(), tradeID)
 	if err != nil {
 		logger.Infof("Failed to load trade by ID: %v", err)
 		return &Trade{}, err
 	}
 
-	// Используем функцию loadItems для OfferedItems и RequestedItems
 	offeredItems, err := loadItems(data.OfferedItems)
 	if err != nil {
 		logger.Infof("Failed to load offered items for trade: %v", err)
@@ -139,6 +148,11 @@ func LoadTradeByID(tradeID string) (*Trade, error) {
 func DeleteTradeByID(tradeID string) error {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return fmt.Errorf("failed to create repository")
+	}
+
 	if err := repo.Delete(context.TODO(), tradeID); err != nil {
 		logger.Infof("Failed to delete trade: %v", err)
 		return err
@@ -148,8 +162,13 @@ func DeleteTradeByID(tradeID string) error {
 
 func LoadTradesByItemUUID(itemID string) ([]*Trade, error) {
 	logger := logging.GetLogger()
-	repoTrade := db.NewRepository(logger)
-	tradeData, err := repoTrade.FindByItemUUID(context.TODO(), itemID)
+	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
+	tradeData, err := repo.FindByItemUUID(context.TODO(), itemID)
 	if err != nil {
 		logger.Infof("Failed to load trades by item UUID: %v", err)
 		return []*Trade{}, err
@@ -185,7 +204,12 @@ func UpdateTradeByID(tradeID string, offeredItems, requestedItems []*Item) error
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
 
-	// Преобразуем OfferedItems и RequestedItems в списки uuid.UUID
+	if repo == nil {
+		return func() error {
+			return fmt.Errorf("failed to create repository")
+		}()
+	}
+
 	offeredItemIDs := make([]uuid.UUID, len(offeredItems))
 	requestedItemIDs := make([]uuid.UUID, len(requestedItems))
 
@@ -197,7 +221,6 @@ func UpdateTradeByID(tradeID string, offeredItems, requestedItems []*Item) error
 		requestedItemIDs[i] = item.ItemId
 	}
 
-	// Вызываем метод Update репозитория
 	if err := repo.Update(context.TODO(), tradeID, offeredItemIDs, requestedItemIDs); err != nil {
 		logger.Infof("Failed to update trade by ID: %v", err)
 		return err
@@ -208,8 +231,13 @@ func UpdateTradeByID(tradeID string, offeredItems, requestedItems []*Item) error
 
 func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 	logger := logging.GetLogger()
-	repoTrade := db.NewRepository(logger)
-	tradeData, err := repoTrade.FindByUserUUID(context.TODO(), userID)
+	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
+	tradeData, err := repo.FindByUserUUID(context.TODO(), userID)
 	if err != nil {
 		logger.Infof("Failed to load trades by user UUID: %v", err)
 		return []*Trade{}, err
@@ -245,7 +273,6 @@ func loadItems(tradeItems []db.TradeItem) ([]*Item, error) {
 	logger := logging.GetLogger()
 	var items []*Item
 
-	// Используем метод LoadItem из modelItem для каждого itemID
 	for _, tradeItem := range tradeItems {
 		item, err := LoadItem(tradeItem.ItemID.String())
 		if err != nil {

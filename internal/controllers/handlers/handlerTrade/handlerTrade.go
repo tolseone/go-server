@@ -1,9 +1,10 @@
 package handlerTrade
 
 import (
-	"encoding/json"
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -24,28 +25,23 @@ func NewTradeController() *TradeController {
 }
 
 func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Создание объекта новой сделки.
 	var newTrade *model.Trade
 
-	// Декодируем данные из тела запроса в новую сделку.
 	if err := json.NewDecoder(r.Body).Decode(&newTrade); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Валидация данных, которвые вводит пользователь
 	if err := h.validator.Struct(newTrade); err != nil {
-		// Обработка ошибок валидации
 		errors := err.(validator.ValidationErrors)
 		for _, e := range errors {
-			// Выводим ошибку в лог или обрабатываем ее по вашему усмотрению
 			h.logger.Errorf("Validation error: %s", e)
 		}
 		http.Error(w, "Validation Error", http.StatusBadRequest)
 		return
 	}
 
-	// Подставьте сюда свою логику работы с базой данных
+	// Save to DB
 	id, err := newTrade.Save()
 	if err != nil {
 		h.logger.Fatalf("failed to create trade: %v", err)
@@ -54,7 +50,6 @@ func (h *TradeController) CreateTrade(w http.ResponseWriter, r *http.Request, pa
 	}
 	newTrade.TradeID = id.(uuid.UUID)
 
-	// Возвращаем успешный статус и информацию о созданной сделке
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newTrade)
@@ -68,17 +63,14 @@ func (h *TradeController) GetTradeList(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	// Marshal trades to JSON and send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(trades)
 }
 
 func (h *TradeController) GetTradesByItemUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Extract item ID from URL
 	itemID := params.ByName("item_id")
 
-	// Call the corresponding method from your repository to fetch trades by item ID
 	trades, err := model.LoadTradesByItemUUID(itemID)
 	if err != nil {
 		h.logger.Errorf("failed to get trades by item UUID: %v", err)
@@ -86,31 +78,26 @@ func (h *TradeController) GetTradesByItemUUID(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Marshal trades to JSON and send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(trades)
 }
+
 func (h *TradeController) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Extract trade ID from URL
 	tradeID := params.ByName("uuid")
 
-	// Call the corresponding method from your repository to delete the trade by ID
 	if err := model.DeleteTradeByID(tradeID); err != nil {
 		h.logger.Errorf("failed to delete trade by ID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Return a successful response for the deletion
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *TradeController) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Extract trade ID from URL
 	tradeID := params.ByName("trade_id")
 
-	// Call the corresponding method from your repository to fetch the trade by ID
 	trade, err := model.LoadTradeByID(tradeID)
 	if err != nil {
 		h.logger.Errorf("failed to get trade by ID: %v", err)
@@ -118,17 +105,14 @@ func (h *TradeController) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Marshal trade to JSON and send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(trade)
 }
 
 func (h *TradeController) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Extract trade ID from URL
 	tradeID := params.ByName("trade_id")
 
-	// Extract data from request body
 	var updateData *model.Trade
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
 		h.logger.Errorf("failed to decode update data: %v", err)
@@ -136,12 +120,12 @@ func (h *TradeController) UpdateTradeByUUID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Call the corresponding method from your repository to update the trade by ID
 	if err := model.UpdateTradeByID(tradeID, updateData.OfferedItems, updateData.RequestedItems); err != nil {
 		h.logger.Errorf("failed to update trade by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
 	updatedTrade, err := model.LoadTradeByID(tradeID)
 	if err != nil {
 		h.logger.Errorf("failed to get trade by ID: %v", err)
@@ -149,17 +133,14 @@ func (h *TradeController) UpdateTradeByUUID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Marshal updated trade to JSON and send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(updatedTrade)
 }
 
 func (h *TradeController) GetTradesByUserUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Extract user ID from URL
 	userID := params.ByName("user_id")
 
-	// Call the corresponding method from your repository to fetch trades by user ID
 	trades, err := model.LoadTradesByUserUUID(userID)
 	if err != nil {
 		h.logger.Errorf("failed to get trades by user UUID: %v", err)
@@ -167,7 +148,6 @@ func (h *TradeController) GetTradesByUserUUID(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Marshal trades to JSON and send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(trades)

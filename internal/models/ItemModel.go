@@ -1,11 +1,13 @@
 package model
 
 import (
-	"context"
-	"fmt"
-	"github.com/google/uuid"
 	"go-server/internal/repositories/db/postgresItem"
 	"go-server/pkg/logging"
+
+	"context"
+	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type Item struct {
@@ -16,16 +18,17 @@ type Item struct {
 }
 
 func (itm *Item) Save() (interface{}, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	var data db.ItemData
 	data.Name = itm.Name
 	data.Rarity = itm.Rarity
 	data.Description = itm.Description
-
-	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
-	if repo == nil {
-		return nil, fmt.Errorf("failed to create repository")
-	}
 
 	if itm.ItemId != uuid.Nil {
 		return repo.Update(context.TODO(), data)
@@ -34,16 +37,21 @@ func (itm *Item) Save() (interface{}, error) {
 	}
 }
 
-func NewItem(Name, Rarity, Description string) *Item {
-	itm := new(Item)
-	itm.Name = Name
-	itm.Rarity = Rarity
-	itm.Description = Description
-	return itm
+func NewItem(name, rarity, description string) *Item {
+	return &Item{
+		Name:        name,
+		Rarity:      rarity,
+		Description: description,
+	}
 }
 func LoadItem(id string) (*Item, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindOne(context.TODO(), id)
 	if err != nil {
 		logger.Infof("Failed to load item: %v", err)
@@ -61,6 +69,11 @@ func LoadItem(id string) (*Item, error) {
 func LoadItems() ([]*Item, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindAll(context.TODO())
 	if err != nil {
 		logger.Infof("Failed to load items: %v", err)
@@ -83,6 +96,11 @@ func LoadItems() ([]*Item, error) {
 func DeleteItem(id string) error {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return fmt.Errorf("failed to create repository")
+	}
+
 	if err := repo.Delete(context.TODO(), id); err != nil {
 		logger.Infof("Failed to delete item: %v", err)
 		return err

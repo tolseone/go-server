@@ -1,12 +1,13 @@
 package db
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
+	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -33,15 +34,12 @@ func NewRepository(logger *logging.Logger) *RepositoryItem {
 	}
 	logger.Info("connected to PostgreSQL")
 
-	repo := &RepositoryItem{
+	return &RepositoryItem{
 		client: client,
 		logger: logger,
 	}
-
-	return repo
 }
 
-// Create implements item.Repository.
 func (r *RepositoryItem) Create(ctx context.Context, i interface{}) (interface{}, error) {
 	q := `
 		INSERT INTO public.item (
@@ -75,7 +73,6 @@ func (r *RepositoryItem) Create(ctx context.Context, i interface{}) (interface{}
 
 }
 
-// Delete implements item.Repository.
 func (r *RepositoryItem) Delete(ctx context.Context, id string) error {
 	q := `
 		DELETE FROM public.item
@@ -90,10 +87,14 @@ func (r *RepositoryItem) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// FindAll implements item.Repository.
 func (r *RepositoryItem) FindAll(ctx context.Context) ([]ItemData, error) {
 	q := `
-        SELECT id, name, rarity, description FROM public.item
+        SELECT 
+			id, 
+			name, 
+			rarity, 
+			description 
+		FROM public.item
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q)
@@ -120,10 +121,15 @@ func (r *RepositoryItem) FindAll(ctx context.Context) ([]ItemData, error) {
 	return items, nil
 }
 
-// FindOne implements item.Repository.
 func (r *RepositoryItem) FindOne(ctx context.Context, id string) (ItemData, error) {
 	q := `
-        SELECT id, name, rarity, description FROM public.item WHERE id = $1
+        SELECT 
+			id, 
+			name, 
+			rarity, 
+			description 
+		FROM public.item 
+		WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -136,7 +142,6 @@ func (r *RepositoryItem) FindOne(ctx context.Context, id string) (ItemData, erro
 	return it, nil
 }
 
-// Update implements item.Repository.
 func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interface{}, error) {
 	var updatedItem ItemData
 	q := `
@@ -156,6 +161,7 @@ func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interfac
 
 	return nil, nil
 }
+
 func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }

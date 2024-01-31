@@ -1,12 +1,13 @@
 package db
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
+	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -32,15 +33,13 @@ func NewRepository(logger *logging.Logger) *RepositoryUser {
 	}
 	logger.Info("connected to PostgreSQL")
 
-	repo := &RepositoryUser{
+	return &RepositoryUser{
 		client: client,
 		logger: logger,
 	}
 
-	return repo
 }
 
-// Create implements user.Repository.
 func (r *RepositoryUser) Create(ctx context.Context, u interface{}) (interface{}, error) {
 	q := `
 		INSERT INTO public.user (
@@ -74,10 +73,12 @@ func (r *RepositoryUser) Create(ctx context.Context, u interface{}) (interface{}
 
 }
 
-// Delete implements user.Repository.
 func (r *RepositoryUser) Delete(ctx context.Context, id string) error {
 	q := `
-		DELETE FROM public.user WHERE id = $1
+		DELETE 
+		FROM public.user 
+		WHERE 
+			id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -88,10 +89,13 @@ func (r *RepositoryUser) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// FindAll implements user.Repository.
 func (r *RepositoryUser) FindAll(ctx context.Context) ([]UserData, error) {
 	q := `
-        SELECT id, name, email FROM public.user
+        SELECT 
+			id, 
+			name, 
+			email 
+		FROM public.user
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q)
@@ -118,10 +122,15 @@ func (r *RepositoryUser) FindAll(ctx context.Context) ([]UserData, error) {
 	return users, nil
 }
 
-// FindOne implements user.Repository.
 func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, error) {
 	q := `
-        SELECT id, name, email FROM public.user WHERE id = $1
+        SELECT 
+			id, 
+			name, 
+			email 
+		FROM public.user 
+		WHERE 
+			id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -133,9 +142,16 @@ func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, erro
 
 	return u, nil
 }
+
 func (r *RepositoryUser) FindUserByEmail(ctx context.Context, email string) (UserData, error) {
 	q := `
-        SELECT id, name, email FROM public.user WHERE email = $1
+        SELECT 
+			id, 
+			name, 
+			email 
+		FROM public.user 
+		WHERE 
+			email = $1
     `
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -148,7 +164,6 @@ func (r *RepositoryUser) FindUserByEmail(ctx context.Context, email string) (Use
 	return u, nil
 }
 
-// Update implements user.Repository.
 func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interface{}, error) {
 	q := `
 		UPDATE public.user 
