@@ -6,13 +6,12 @@ import (
 	"go-server/pkg/logging"
 
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5"
 )
 
 type RepositoryTrade struct {
@@ -61,57 +60,18 @@ func (r *RepositoryTrade) Create(ctx context.Context, data TradeData) (interface
 		_ = tx.Commit(ctx)
 	}()
 
-	// 1. Добавить запись в таблицу trade
-	qTrade := `
-		INSERT INTO public.trade (
-			id,
-			user_id,
-			status,
-			date)
-		VALUES (
-			gen_random_uuid(),
-			$1,
-			$2,
-			CURRENT_TIMESTAMP)
-		RETURNING id
-	`
-	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(qTrade)))
-
-	if err := tx.QueryRow(ctx, qTrade, data.UserID, data.Status).Scan(&data.TradeID); err != nil {
+	tradeID, err := r.createTrade(ctx, tx, data)
+	if err != nil {
 		r.logger.Infof("Failed to create trade: %v", data)
-		var pgErr *pgconn.PgError
-		if errors.Is(err, pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
-			r.logger.Error(newErr)
-			return nil, newErr
-		}
 		return nil, err
 	}
 
-	// 2. Добавить записи в таблицу trade_item
-	qTradeItem := `
-		INSERT INTO public.trade_item (
-			id,
-			trade_id,
-			item_id,
-			item_status)
-		VALUES (
-			gen_random_uuid(),
-			$1,
-			$2,
-			$3)
-		RETURNING id
-	`
-
-	for _, item := range append(data.OfferedItems, data.RequestedItems...) {
-		if _, err := tx.Exec(ctx, qTradeItem, data.TradeID, item.ItemID, item.ItemStatus); err != nil {
-			return nil, err
-		}
+	if err := r.createTradeItems(ctx, tx, tradeID, append(data.OfferedItems, data.RequestedItems...)); err != nil {
+		return nil, err
 	}
 
 	r.logger.Infof("Completed to create trade: %v", data)
-	return data.TradeID, nil
+	return tradeID, nil
 }
 
 func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
@@ -357,6 +317,53 @@ func loadTradeItems(ctx context.Context, client postgresql.Client, logger *loggi
 	}
 
 	return tradeItems, nil
+}
+
+func (r *RepositoryTrade) createTrade(ctx context.Context, tx pgx.Tx, data TradeData) (uuid.UUID, error) {
+	q := `
+		INSERT INTO public.trade (
+			id,
+			user_id,
+			status,
+			date)
+		VALUES (
+			gen_random_uuid(),
+			$1,
+			$2,
+			CURRENT_TIMESTAMP)
+		RETURNING id
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	if err := tx.QueryRow(ctx, q, data.UserID, data.Status).Scan(&data.TradeID); err != nil {
+		return uuid.Nil, err
+	}
+
+	return data.TradeID, nil
+}
+
+func (r *RepositoryTrade) createTradeItems(ctx context.Context, tx pgx.Tx, tradeID uuid.UUID, items []TradeItem) error {
+	q := `
+		INSERT INTO public.trade_item (
+			id,
+			trade_id,
+			item_id,
+			item_status)
+		VALUES (
+			gen_random_uuid(),
+			$1,
+			$2,
+			$3)
+		RETURNING id
+	`
+
+	for _, item := range items {
+		if _, err := tx.Exec(ctx, q, tradeID, item.ItemID, item.ItemStatus); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func formatQuery(q string) string {
