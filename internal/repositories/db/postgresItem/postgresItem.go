@@ -1,10 +1,6 @@
 package db
 
 import (
-	"go-server/internal/config"
-	"go-server/pkg/client/postgresql"
-	"go-server/pkg/logging"
-
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"go-server/internal/config"
+	"go-server/pkg/client/postgresql"
+	"go-server/pkg/logging"
 )
 
 type RepositoryItem struct {
@@ -143,7 +143,6 @@ func (r *RepositoryItem) FindOne(ctx context.Context, id string) (ItemData, erro
 }
 
 func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interface{}, error) {
-	var updatedItem ItemData
 	q := `
 		UPDATE public.item
 		SET 
@@ -154,6 +153,8 @@ func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interfac
 			id = $4
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	updatedItem := item.(ItemData)
 
 	if _, err := r.client.Exec(ctx, q, updatedItem.Name, updatedItem.Rarity, updatedItem.Description, updatedItem.ItemId); err != nil {
 		return nil, err
