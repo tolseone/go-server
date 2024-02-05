@@ -12,6 +12,7 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
 )
 
 type RepositoryTrade struct {
@@ -223,22 +224,32 @@ func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]
 	return trades, nil
 }
 
-func (r *RepositoryTrade) Update(ctx context.Context, tradeID string, offeredItems, requestedItems []uuid.UUID) error {
-	q := `
-		UPDATE public.trade
-		SET 
-			offered_items = $1, 
-			requested_items = $2
-		WHERE 
-			id = $3
-	`
-	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+func (r *RepositoryTrade) Update(ctx context.Context, trade interface{}) (interface{}, error) {
+	updatedTrade := trade.(TradeData)
 
-	if _, err := r.client.Exec(ctx, q, offeredItems, requestedItems, tradeID); err != nil {
-		return err
+	tx, err := r.client.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return
+		}
+		_ = tx.Commit(ctx)
+	}()
+
+	if err := r.updateTrade(ctx, tx, updatedTrade); err != nil {
+		r.logger.Infof("Failed to update trade: %v", updatedTrade)
+		return nil, err
 	}
 
-	return nil
+	if err := r.updateTradeItems(ctx, tx, updatedTrade.TradeID, append(updatedTrade.OfferedItems, updatedTrade.RequestedItems...)); err != nil {
+		return nil, err
+	}
+
+	r.logger.Infof("Completed to update trade: %v", updatedTrade)
+	return nil, nil
 }
 
 func (r *RepositoryTrade) GetTradesByUserUUID(ctx context.Context, userID string) ([]TradeData, error) {
@@ -373,6 +384,58 @@ func (r *RepositoryTrade) createTrade(ctx context.Context, tx pgx.Tx, data Trade
 
 func (r *RepositoryTrade) createTradeItems(ctx context.Context, tx pgx.Tx, tradeID uuid.UUID, items []TradeItem) error {
 	q := `
+		INSERT INTO public.trade_item (
+			id,
+			trade_id,
+			item_id,
+			item_status)
+		VALUES (
+			gen_random_uuid(),
+			$1,
+			$2,
+			$3)
+		RETURNING id
+	`
+
+	for _, item := range items {
+		if _, err := tx.Exec(ctx, q, tradeID, item.ItemID, item.ItemStatus); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *RepositoryTrade) updateTrade(ctx context.Context, tx pgx.Tx, data TradeData) error {
+	q := `
+		UPDATE public.trade
+		SET
+			user_id = $1,
+			status = $2,
+			date = $3
+		WHERE
+			id = $4
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	if _, err := tx.Exec(ctx, q, data.UserID, data.Status, data.Date, data.TradeID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RepositoryTrade) updateTradeItems(ctx context.Context, tx pgx.Tx, tradeID uuid.UUID, items []TradeItem) error {
+	q := `
+		DELETE FROM public.trade_item 
+		WHERE 
+			trade_id = $1
+	`
+	if _, err := tx.Exec(ctx, q, tradeID); err != nil {
+		return err
+	}
+
+	q = `
 		INSERT INTO public.trade_item (
 			id,
 			trade_id,
