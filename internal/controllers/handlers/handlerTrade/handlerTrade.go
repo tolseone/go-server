@@ -1,15 +1,15 @@
 package handlerTrade
 
 import (
-	"go-server/internal/models"
-	"go-server/pkg/logging"
-
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
+
+	"go-server/internal/models"
+	"go-server/pkg/logging"
 )
 
 type TradeHandler struct {
@@ -41,7 +41,6 @@ func (h *TradeHandler) CreateTrade(w http.ResponseWriter, r *http.Request, param
 		return
 	}
 
-	// Save to DB
 	id, err := newTrade.Save()
 	if err != nil {
 		h.logger.Fatalf("failed to create trade: %v", err)
@@ -69,7 +68,7 @@ func (h *TradeHandler) GetTradeList(w http.ResponseWriter, r *http.Request, para
 }
 
 func (h *TradeHandler) GetTradesByItemUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	itemID := params.ByName("item_id")
+	itemID := params.ByName("uuid")
 
 	trades, err := model.LoadTradesByItemUUID(itemID)
 	if err != nil {
@@ -96,9 +95,16 @@ func (h *TradeHandler) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request,
 }
 
 func (h *TradeHandler) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	tradeID := params.ByName("trade_id")
+	tradeIDStr := params.ByName("uuid")
 
-	trade, err := model.LoadTradeByID(tradeID)
+	tradeID, err := uuid.Parse(tradeIDStr)
+	if err != nil {
+		h.logger.Errorf("failed to parse tradeID: %v", err)
+		http.Error(w, "Invalid TradeID", http.StatusBadRequest)
+		return
+	}
+
+	trade, err := model.LoadTradeByID(tradeID.String())
 	if err != nil {
 		h.logger.Errorf("failed to get trade by ID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

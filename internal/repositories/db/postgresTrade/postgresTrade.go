@@ -1,10 +1,6 @@
 package db
 
 import (
-	"go-server/internal/config"
-	"go-server/pkg/client/postgresql"
-	"go-server/pkg/logging"
-
 	"context"
 	"fmt"
 	"strings"
@@ -12,6 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"go-server/internal/config"
+	"go-server/pkg/client/postgresql"
+	"go-server/pkg/logging"
 )
 
 type RepositoryTrade struct {
@@ -77,41 +77,56 @@ func (r *RepositoryTrade) Create(ctx context.Context, data TradeData) (interface
 func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 	q := `
         SELECT 
-			id, 
-			user_id, 
-			status, 
-			date 
-		FROM public.trade
+			t.id,
+			t.user_id,
+			t.status,
+			t.date,
+			ti.item_id,
+			ti.item_status
+		FROM public.trade t
+		LEFT JOIN public.trade_item ti ON t.id = ti.trade_id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
 	rows, err := r.client.Query(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
-	trades := make([]TradeData, 0)
+	defer rows.Close()
 
+	tradesMap := make(map[uuid.UUID]TradeData)
 	for rows.Next() {
 		var td TradeData
+		var itemID uuid.UUID
+		var itemStatus string
 
-		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date); err != nil {
+		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date, &itemID, &itemStatus); err != nil {
 			return nil, err
 		}
 
-		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
-		if err != nil {
-			return nil, err
+		if itemID != uuid.Nil {
+			item := TradeItem{ItemID: itemID, ItemStatus: itemStatus}
+			if existingTrade, ok := tradesMap[td.TradeID]; ok {
+				if item.ItemStatus == "offered" {
+					existingTrade.OfferedItems = append(existingTrade.OfferedItems, item)
+				} else if item.ItemStatus == "requested" {
+					existingTrade.RequestedItems = append(existingTrade.RequestedItems, item)
+				} else {
+					r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+				}
+				tradesMap[td.TradeID] = existingTrade
+
+			} else {
+				td.OfferedItems = []TradeItem{item}
+				tradesMap[td.TradeID] = td
+			}
 		}
+	}
 
-		requestedItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "requested")
-		if err != nil {
-			return nil, err
-		}
-
-		td.OfferedItems = offeredItems
-		td.RequestedItems = requestedItems
-
-		trades = append(trades, td)
+	var trades []TradeData
+	for _, trade := range tradesMap {
+		trades = append(trades, trade)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -158,45 +173,47 @@ func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, er
 func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]TradeData, error) {
 	q := `
         SELECT 
-			id, 
-			user_id, 
-			status, 
-			date 
-		FROM public.trade
-		WHERE 
-			$1 = ANY(offered_items) 
-			OR 
-			$1 = ANY(requested_items)
+			t.id,
+			t.user_id,
+			t.status,
+			t.date,
+			ti.item_id,
+			ti.item_status
+		FROM public.trade as t 
+		JOIN public.trade_item as ti ON t.id = ti.trade_id
+		WHERE ti.item_id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
 	rows, err := r.client.Query(ctx, q, itemID)
 	if err != nil {
 		return nil, err
 	}
 
-	trades := make([]TradeData, 0)
+	defer rows.Close()
 
+	tradesMap := make(map[uuid.UUID]TradeData)
 	for rows.Next() {
 		var td TradeData
+		var itemID uuid.UUID
+		var itemStatus string
 
-		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date); err != nil {
+		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date, &itemID, &itemStatus); err != nil {
 			return nil, err
 		}
 
-		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
-		if err != nil {
-			return nil, err
+		if existingTrade, ok := tradesMap[td.TradeID]; ok {
+			existingTrade.OfferedItems = append(existingTrade.OfferedItems, TradeItem{ItemID: itemID, ItemStatus: itemStatus})
+			tradesMap[td.TradeID] = existingTrade
+		} else {
+			td.OfferedItems = []TradeItem{{ItemID: itemID, ItemStatus: itemStatus}}
+			tradesMap[td.TradeID] = td
 		}
+	}
 
-		requestedItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "requested")
-		if err != nil {
-			return nil, err
-		}
-
-		td.OfferedItems = offeredItems
-		td.RequestedItems = requestedItems
-
-		trades = append(trades, td)
+	var trades []TradeData
+	for _, trade := range tradesMap {
+		trades = append(trades, trade)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -224,40 +241,50 @@ func (r *RepositoryTrade) Update(ctx context.Context, tradeID string, offeredIte
 	return nil
 }
 
-func (r *RepositoryTrade) FindByUserUUID(ctx context.Context, userID string) ([]TradeData, error) {
+func (r *RepositoryTrade) GetTradesByUserUUID(ctx context.Context, userID string) ([]TradeData, error) {
 	q := `
-        SELECT id, user_id, status, date FROM public.trade
-		WHERE user_id = $1
+        SELECT 
+			t.id,
+			t.user_id,
+			t.status,
+			t.date,
+			ti.item_id,
+			ti.item_status
+		FROM public.trade as t 
+		JOIN public.trade_item as ti ON t.id = ti.trade_id
+		WHERE t.user_id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
 	rows, err := r.client.Query(ctx, q, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	trades := make([]TradeData, 0)
+	defer rows.Close()
 
+	tradesMap := make(map[uuid.UUID]TradeData)
 	for rows.Next() {
 		var td TradeData
+		var itemID uuid.UUID
+		var itemStatus string
 
-		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date); err != nil {
+		if err := rows.Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date, &itemID, &itemStatus); err != nil {
 			return nil, err
 		}
 
-		offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
-		if err != nil {
-			return nil, err
+		if existingTrade, ok := tradesMap[td.TradeID]; ok {
+			existingTrade.OfferedItems = append(existingTrade.OfferedItems, TradeItem{ItemID: itemID, ItemStatus: itemStatus})
+			tradesMap[td.TradeID] = existingTrade
+		} else {
+			td.OfferedItems = []TradeItem{{ItemID: itemID, ItemStatus: itemStatus}}
+			tradesMap[td.TradeID] = td
 		}
+	}
 
-		requestedItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "requested")
-		if err != nil {
-			return nil, err
-		}
-
-		td.OfferedItems = offeredItems
-		td.RequestedItems = requestedItems
-
-		trades = append(trades, td)
+	var trades []TradeData
+	for _, trade := range tradesMap {
+		trades = append(trades, trade)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -302,6 +329,8 @@ func loadTradeItems(ctx context.Context, client postgresql.Client, logger *loggi
 	}
 
 	var tradeItems []TradeItem
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var ti TradeItem
