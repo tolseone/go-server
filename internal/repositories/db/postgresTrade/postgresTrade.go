@@ -12,7 +12,6 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
-
 )
 
 type RepositoryTrade struct {
@@ -165,7 +164,7 @@ func (r *RepositoryTrade) FindOne(ctx context.Context, tradeID string) (TradeDat
 	if err != nil {
 		return TradeData{}, err
 	}
-	
+
 	defer rows.Close()
 
 	var trade TradeData
@@ -306,9 +305,12 @@ func (r *RepositoryTrade) GetTradesByUserUUID(ctx context.Context, userID string
 			t.date,
 			ti.item_id,
 			ti.item_status
-		FROM public.trade as t 
-		JOIN public.trade_item as ti ON t.id = ti.trade_id
-		WHERE t.user_id = $1
+		FROM public.trade t 
+		JOIN public.trade_item ti 
+		ON 
+			t.id = ti.trade_id
+		WHERE 
+			t.user_id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -329,11 +331,25 @@ func (r *RepositoryTrade) GetTradesByUserUUID(ctx context.Context, userID string
 			return nil, err
 		}
 
+		item := TradeItem{ItemID: itemID, ItemStatus: itemStatus}
 		if existingTrade, ok := tradesMap[td.TradeID]; ok {
-			existingTrade.OfferedItems = append(existingTrade.OfferedItems, TradeItem{ItemID: itemID, ItemStatus: itemStatus})
+			if item.ItemStatus == "offered" {
+				existingTrade.OfferedItems = append(existingTrade.OfferedItems, item)
+			} else if item.ItemStatus == "requested" {
+				existingTrade.RequestedItems = append(existingTrade.RequestedItems, item)
+			} else {
+				r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+			}
 			tradesMap[td.TradeID] = existingTrade
+
 		} else {
-			td.OfferedItems = []TradeItem{{ItemID: itemID, ItemStatus: itemStatus}}
+			if item.ItemStatus == "offered" {
+				td.OfferedItems = []TradeItem{item}
+			} else if item.ItemStatus == "requested" {
+				td.RequestedItems = []TradeItem{item}
+			} else {
+				r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+			}
 			tradesMap[td.TradeID] = td
 		}
 	}
@@ -364,44 +380,6 @@ func (r *RepositoryTrade) Delete(ctx context.Context, tradeID string) error {
 	}
 
 	return nil
-}
-
-func loadTradeItems(ctx context.Context, client postgresql.Client, logger *logging.Logger, tradeID uuid.UUID, itemStatus string) ([]TradeItem, error) {
-	q := `
-        SELECT
-			item_id, 
-			item_status 
-		FROM public.trade_item 
-		WHERE 
-			trade_id = $1 
-		AND 
-			item_status = $2
-	`
-	logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-
-	rows, err := client.Query(ctx, q, tradeID, itemStatus)
-	if err != nil {
-		return nil, err
-	}
-
-	var tradeItems []TradeItem
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var ti TradeItem
-		if err := rows.Scan(&ti.ItemID, &ti.ItemStatus); err != nil {
-			return nil, err
-		}
-
-		tradeItems = append(tradeItems, ti)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return tradeItems, nil
 }
 
 func (r *RepositoryTrade) createTrade(ctx context.Context, tx pgx.Tx, data TradeData) (uuid.UUID, error) {

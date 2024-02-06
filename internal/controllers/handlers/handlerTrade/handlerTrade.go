@@ -10,7 +10,6 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
-
 )
 
 type TradeHandler struct {
@@ -161,9 +160,16 @@ func (h *TradeHandler) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request,
 }
 
 func (h *TradeHandler) GetTradesByUserUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	userID := params.ByName("uuid")
+	userIDStr := params.ByName("uuid")
 
-	trades, err := model.LoadTradesByUserUUID(userID)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		h.logger.Errorf("failed to parse tradeID: %v", err)
+		http.Error(w, "Invalid TradeID", http.StatusBadRequest)
+		return
+	}
+
+	trades, err := model.LoadTradesByUserUUID(userID.String())
 	if err != nil {
 		h.logger.Errorf("failed to get trades by user UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
