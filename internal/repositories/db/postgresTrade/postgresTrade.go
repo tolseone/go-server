@@ -68,6 +68,7 @@ func (r *RepositoryTrade) Create(ctx context.Context, data TradeData) (interface
 	}
 
 	if err := r.createTradeItems(ctx, tx, tradeID, append(data.OfferedItems, data.RequestedItems...)); err != nil {
+		r.logger.Errorf("Failed to create trade items: %v", err)
 		return nil, err
 	}
 
@@ -407,6 +408,7 @@ func (r *RepositoryTrade) createTradeItems(ctx context.Context, tx pgx.Tx, trade
 
 	for _, item := range items {
 		if _, err := tx.Exec(ctx, q, tradeID, item.ItemID, item.ItemStatus); err != nil {
+			r.logger.Errorf("Failed to insert trade item: %v", err)
 			return err
 		}
 	}

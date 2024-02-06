@@ -125,6 +125,12 @@ func (h *TradeHandler) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if trade.TradeID == uuid.Nil {
+		h.logger.Errorf("trade with ID %s not found", tradeID)
+		http.Error(w, "Trade not found", http.StatusNotFound)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(trade)
