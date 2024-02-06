@@ -10,6 +10,7 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
 )
 
 type TradeHandler struct {
@@ -68,9 +69,16 @@ func (h *TradeHandler) GetTradeList(w http.ResponseWriter, r *http.Request, para
 }
 
 func (h *TradeHandler) GetTradesByItemUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	itemID := params.ByName("uuid")
+	itemIDStr := params.ByName("uuid")
 
-	trades, err := model.LoadTradesByItemUUID(itemID)
+	itemID, err := uuid.Parse(itemIDStr)
+	if err != nil {
+		h.logger.Errorf("failed to parse itemID: %v", err)
+		http.Error(w, "Invalid itemID", http.StatusBadRequest)
+		return
+	}
+
+	trades, err := model.LoadTradesByItemUUID(itemID.String())
 	if err != nil {
 		h.logger.Errorf("failed to get trades by item UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -83,9 +91,16 @@ func (h *TradeHandler) GetTradesByItemUUID(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *TradeHandler) DeleteTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	tradeID := params.ByName("uuid")
+	tradeIDStr := params.ByName("uuid")
 
-	if err := model.DeleteTradeByID(tradeID); err != nil {
+	tradeID, err := uuid.Parse(tradeIDStr)
+	if err != nil {
+		h.logger.Errorf("failed to parse tradeID: %v", err)
+		http.Error(w, "Invalid TradeID", http.StatusBadRequest)
+		return
+	}
+
+	if err := model.DeleteTradeByID(tradeID.String()); err != nil {
 		h.logger.Errorf("failed to delete trade by ID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -146,7 +161,7 @@ func (h *TradeHandler) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request,
 }
 
 func (h *TradeHandler) GetTradesByUserUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	userID := params.ByName("user_id")
+	userID := params.ByName("uuid")
 
 	trades, err := model.LoadTradesByUserUUID(userID)
 	if err != nil {
