@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
-	"go-server/internal/config"
-	"go-server/internal/router"
-	"go-server/pkg/logging"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
+	"go-server/internal/config"
+	"go-server/internal/router"
+	"go-server/pkg/logging"
+
 )
 
 func main() {

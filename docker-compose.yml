@@ -1,0 +1,54 @@
+---
+version: "3.9"
+
+services:
+  app:
+    image: tolseone/go-service:latest
+    container_name: ps-backend
+    ports:
+      - 1234:1234
+    depends_on:
+      - postgres
+    networks:
+      - postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+    
+  postgres:
+    container_name: ps-psql
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./ps-psql-data:/var/lib/postgresql/data
+      # - ./migrations:/docker-entrypoint-initdb.d/
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres
+    restart: unless-stopped
+  
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mymail.ru
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+    ports:
+      - 8080:80
+    networks:
+      - postgres
+    restart: unless-stopped
+
+networks:
+  postgres:
+    driver: bridge
+
+volumes:
+    postgres:
+    pgadmin:

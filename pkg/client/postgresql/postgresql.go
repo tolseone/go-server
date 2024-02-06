@@ -1,9 +1,10 @@
 package postgresql
 
 import (
+	"go-server/internal/config"
+
 	"context"
 	"fmt"
-	"go-server/internal/config"
 	"log"
 	"time"
 

@@ -3,28 +3,31 @@ package model
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
+
 	"go-server/internal/repositories/db/postgresUser"
 	"go-server/pkg/logging"
 
-	"github.com/google/uuid"
 )
 
 type User struct {
 	UserId   uuid.UUID `json:"user_id"`
-	Username string    `json:"username,omitempty"`
-	Email    string    `json:"email"`
+	Username string    `json:"username,omitempty" validate:"required,min=3,max=100"`
+	Email    string    `json:"email" validate:"required,email,min=6,max=100"`
 }
 
 func (usr *User) Save() (interface{}, error) {
-	var data db.UserData
-	data.Username = usr.Username
-	data.Email = usr.Email
-
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
 	}
+
+	var data db.UserData
+	data.Username = usr.Username
+	data.Email = usr.Email
 
 	if usr.UserId != uuid.Nil {
 		data.UserId = usr.UserId
@@ -34,15 +37,21 @@ func (usr *User) Save() (interface{}, error) {
 	}
 }
 
-func NewUser(Username, Email string) *User {
-	usr := new(User)
-	usr.Username = Username
-	usr.Email = Email
-	return usr
+func NewUser(username, email string) *User {
+	return &User{
+		Username: username,
+		Email:    email,
+	}
 }
+
 func LoadUser(id string) (*User, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindOne(context.TODO(), id)
 	if err != nil {
 		logger.Infof("Failed to load User: %v", err)
@@ -59,6 +68,11 @@ func LoadUser(id string) (*User, error) {
 func LoadUsers() ([]*User, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
 	data, err := repo.FindAll(context.TODO())
 	if err != nil {
 		logger.Infof("Failed to load Users: %v", err)
@@ -77,9 +91,34 @@ func LoadUsers() ([]*User, error) {
 
 }
 
+func LoadUserByEmail(email string) (*User, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return nil, fmt.Errorf("failed to create repository")
+	}
+
+	data, err := repo.FindUserByEmail(context.TODO(), email)
+	if err != nil {
+		logger.Infof("Failed to load User by email: %v", err)
+		return &User{}, err
+	}
+	return &User{
+		data.UserId,
+		data.Username,
+		data.Email,
+	}, nil
+}
+
 func DeleteUser(id string) error {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
+
+	if repo == nil {
+		return fmt.Errorf("failed to create repository")
+	}
+
 	if err := repo.Delete(context.TODO(), id); err != nil {
 		logger.Infof("Failed to delete User: %v", err)
 		return err
