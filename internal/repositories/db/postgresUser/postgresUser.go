@@ -1,10 +1,6 @@
 package db
 
 import (
-	"go-server/internal/config"
-	"go-server/pkg/client/postgresql"
-	"go-server/pkg/logging"
-
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"go-server/internal/config"
+	"go-server/pkg/client/postgresql"
+	"go-server/pkg/logging"
 )
 
 type RepositoryUser struct {
@@ -174,6 +174,7 @@ func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interfac
 			id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
 	updatedUser := user.(UserData)
 
 	if _, err := r.client.Exec(ctx, q, updatedUser.UserId, updatedUser.Username, updatedUser.Email); err != nil {

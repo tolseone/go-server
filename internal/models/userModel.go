@@ -1,13 +1,14 @@
 package model
 
 import (
-	"go-server/internal/repositories/db/postgresUser"
-	"go-server/pkg/logging"
-
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"go-server/internal/repositories/db/postgresUser"
+	"go-server/pkg/logging"
+
 )
 
 type User struct {

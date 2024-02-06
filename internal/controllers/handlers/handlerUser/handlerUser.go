@@ -1,9 +1,6 @@
 package handlerUser
 
 import (
-	"go-server/internal/models"
-	"go-server/pkg/logging"
-
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +8,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
+
+	"go-server/internal/models"
+	"go-server/pkg/logging"
+
 )
 
 type UserHandler struct {

@@ -1,13 +1,14 @@
 package model
 
 import (
-	"go-server/internal/repositories/db/postgresItem"
-	"go-server/pkg/logging"
-
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"go-server/internal/repositories/db/postgresItem"
+	"go-server/pkg/logging"
+
 )
 
 type Item struct {

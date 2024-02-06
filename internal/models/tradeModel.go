@@ -1,14 +1,15 @@
 package model
 
 import (
-	"go-server/internal/repositories/db/postgresTrade"
-	"go-server/pkg/logging"
-
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+
+	"go-server/internal/repositories/db/postgresTrade"
+	"go-server/pkg/logging"
+
 )
 
 type Trade struct {
@@ -66,7 +67,11 @@ func (t *Trade) Save() (interface{}, error) {
 		}
 	}
 
-	return repo.Create(context.TODO(), data)
+	if t.TradeID != uuid.Nil {
+		return repo.Update(context.TODO(), data)
+	} else {
+		return repo.Create(context.TODO(), data)
+	}
 }
 
 func LoadTradeList() ([]*Trade, error) {
@@ -200,35 +205,6 @@ func LoadTradesByItemUUID(itemID string) ([]*Trade, error) {
 	return trades, nil
 }
 
-func UpdateTradeByID(tradeID string, offeredItems, requestedItems []*Item) error {
-	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
-
-	if repo == nil {
-		return func() error {
-			return fmt.Errorf("failed to create repository")
-		}()
-	}
-
-	offeredItemIDs := make([]uuid.UUID, len(offeredItems))
-	requestedItemIDs := make([]uuid.UUID, len(requestedItems))
-
-	for i, item := range offeredItems {
-		offeredItemIDs[i] = item.ItemId
-	}
-
-	for i, item := range requestedItems {
-		requestedItemIDs[i] = item.ItemId
-	}
-
-	if err := repo.Update(context.TODO(), tradeID, offeredItemIDs, requestedItemIDs); err != nil {
-		logger.Infof("Failed to update trade by ID: %v", err)
-		return err
-	}
-
-	return nil
-}
-
 func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 	logger := logging.GetLogger()
 	repo := db.NewRepository(logger)
@@ -237,7 +213,7 @@ func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 		return nil, fmt.Errorf("failed to create repository")
 	}
 
-	tradeData, err := repo.FindByUserUUID(context.TODO(), userID)
+	tradeData, err := repo.GetTradesByUserUUID(context.TODO(), userID)
 	if err != nil {
 		logger.Infof("Failed to load trades by user UUID: %v", err)
 		return []*Trade{}, err

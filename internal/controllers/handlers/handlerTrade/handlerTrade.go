@@ -117,7 +117,7 @@ func (h *TradeHandler) GetTradeByTradeUUID(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *TradeHandler) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	tradeID := params.ByName("trade_id")
+	tradeID := params.ByName("uuid")
 
 	var updateData *model.Trade
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
@@ -126,7 +126,8 @@ func (h *TradeHandler) UpdateTradeByUUID(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if err := model.UpdateTradeByID(tradeID, updateData.OfferedItems, updateData.RequestedItems); err != nil {
+	_, err := updateData.Save()
+	if err != nil {
 		h.logger.Errorf("failed to update trade by UUID: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

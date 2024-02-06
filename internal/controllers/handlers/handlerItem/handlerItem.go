@@ -1,15 +1,16 @@
 package handlerItem
 
 import (
-	"go-server/internal/models"
-	"go-server/pkg/logging"
-
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
+
+	"go-server/internal/models"
+	"go-server/pkg/logging"
+
 )
 
 type ItemHandler struct {
