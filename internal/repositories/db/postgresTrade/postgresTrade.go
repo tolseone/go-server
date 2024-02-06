@@ -12,7 +12,6 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
-
 )
 
 type RepositoryTrade struct {
@@ -119,7 +118,13 @@ func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 				tradesMap[td.TradeID] = existingTrade
 
 			} else {
-				td.OfferedItems = []TradeItem{item}
+				if item.ItemStatus == "offered" {
+					td.OfferedItems = []TradeItem{item}
+				} else if item.ItemStatus == "requested" {
+					td.RequestedItems = []TradeItem{item}
+				} else {
+					r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+				}
 				tradesMap[td.TradeID] = td
 			}
 		}
@@ -173,16 +178,24 @@ func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, er
 
 func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]TradeData, error) {
 	q := `
-        SELECT 
+		SELECT 
 			t.id,
-			t.user_id,
-			t.status,
+    		t.user_id,
+    		t.status,
 			t.date,
 			ti.item_id,
 			ti.item_status
-		FROM public.trade as t 
-		JOIN public.trade_item as ti ON t.id = ti.trade_id
-		WHERE ti.item_id = $1
+		FROM public.trade t 
+		JOIN public.trade_item ti ON t.id = ti.trade_id
+		WHERE EXISTS (
+			SELECT 
+				1
+			FROM public.trade_item ti_sub
+			WHERE 
+				ti_sub.trade_id = t.id
+			AND 
+				ti_sub.item_id = $1
+			)
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -203,11 +216,25 @@ func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]
 			return nil, err
 		}
 
+		item := TradeItem{ItemID: itemID, ItemStatus: itemStatus}
 		if existingTrade, ok := tradesMap[td.TradeID]; ok {
-			existingTrade.OfferedItems = append(existingTrade.OfferedItems, TradeItem{ItemID: itemID, ItemStatus: itemStatus})
+			if item.ItemStatus == "offered" {
+				existingTrade.OfferedItems = append(existingTrade.OfferedItems, item)
+			} else if item.ItemStatus == "requested" {
+				existingTrade.RequestedItems = append(existingTrade.RequestedItems, item)
+			} else {
+				r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+			}
 			tradesMap[td.TradeID] = existingTrade
+
 		} else {
-			td.OfferedItems = []TradeItem{{ItemID: itemID, ItemStatus: itemStatus}}
+			if item.ItemStatus == "offered" {
+				td.OfferedItems = []TradeItem{item}
+			} else if item.ItemStatus == "requested" {
+				td.RequestedItems = []TradeItem{item}
+			} else {
+				r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+			}
 			tradesMap[td.TradeID] = td
 		}
 	}
