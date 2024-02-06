@@ -12,6 +12,7 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
 )
 
 type RepositoryTrade struct {
@@ -142,38 +143,55 @@ func (r *RepositoryTrade) FindAll(ctx context.Context) ([]TradeData, error) {
 	return trades, nil
 }
 
-func (r *RepositoryTrade) FindOne(ctx context.Context, id string) (TradeData, error) {
+func (r *RepositoryTrade) FindOne(ctx context.Context, tradeID string) (TradeData, error) {
 	q := `
         SELECT 
-			id, 
-			user_id, 
-			status, 
-			date 
-		FROM public.trade 
-		WHERE id = $1
+			t.id,
+			t.user_id,
+			t.status,
+			t.date,
+			ti.item_id,
+			ti.item_status
+		FROM public.trade t
+		JOIN public.trade_item ti 
+		ON 
+			t.id = ti.trade_id
+		WHERE
+			t.id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	var td TradeData
-	err := r.client.QueryRow(ctx, q, id).Scan(&td.TradeID, &td.UserID, &td.Status, &td.Date)
+	rows, err := r.client.Query(ctx, q, tradeID)
 	if err != nil {
 		return TradeData{}, err
 	}
+	
+	defer rows.Close()
 
-	offeredItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "offered")
-	if err != nil {
+	var trade TradeData
+	for rows.Next() {
+		var itemID uuid.UUID
+		var itemStatus string
+
+		if err := rows.Scan(&trade.TradeID, &trade.UserID, &trade.Status, &trade.Date, &itemID, &itemStatus); err != nil {
+			return TradeData{}, err
+		}
+
+		item := TradeItem{ItemID: itemID, ItemStatus: itemStatus}
+		if item.ItemStatus == "offered" {
+			trade.OfferedItems = append(trade.OfferedItems, item)
+		} else if item.ItemStatus == "requested" {
+			trade.RequestedItems = append(trade.RequestedItems, item)
+		} else {
+			r.logger.Fatalf("Item status %s is not supported", item.ItemStatus)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
 		return TradeData{}, err
 	}
 
-	requestedItems, err := loadTradeItems(ctx, r.client, r.logger, td.TradeID, "requested")
-	if err != nil {
-		return TradeData{}, err
-	}
-
-	td.OfferedItems = offeredItems
-	td.RequestedItems = requestedItems
-
-	return td, nil
+	return trade, nil
 }
 
 func (r *RepositoryTrade) FindByItemUUID(ctx context.Context, itemID string) ([]TradeData, error) {
