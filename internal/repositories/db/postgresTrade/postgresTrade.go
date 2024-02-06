@@ -12,6 +12,7 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
 )
 
 type RepositoryTrade struct {
@@ -366,22 +367,6 @@ func (r *RepositoryTrade) GetTradesByUserUUID(ctx context.Context, userID string
 	return trades, nil
 }
 
-func (r *RepositoryTrade) Delete(ctx context.Context, tradeID string) error {
-	q := `
-		DELETE 
-		FROM public.trade
-		WHERE 
-			id = $1
-	`
-	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-
-	if _, err := r.client.Exec(ctx, q, tradeID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (r *RepositoryTrade) createTrade(ctx context.Context, tx pgx.Tx, data TradeData) (uuid.UUID, error) {
 	q := `
 		INSERT INTO public.trade (
@@ -476,6 +461,58 @@ func (r *RepositoryTrade) updateTradeItems(ctx context.Context, tx pgx.Tx, trade
 		if _, err := tx.Exec(ctx, q, tradeID, item.ItemID, item.ItemStatus); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (r *RepositoryTrade) Delete(ctx context.Context, tradeID string) error {
+	tx, err := r.client.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return
+		}
+		_ = tx.Commit(ctx)
+	}()
+
+	if err := r.deleteTradeItems(ctx, tx, tradeID); err != nil {
+		return err
+	}
+
+	if err := r.deleteTrade(ctx, tx, tradeID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RepositoryTrade) deleteTrade(ctx context.Context, tx pgx.Tx, tradeID string) error {
+	q := `
+        DELETE FROM public.trade
+        WHERE id = $1
+    `
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	if _, err := tx.Exec(ctx, q, tradeID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RepositoryTrade) deleteTradeItems(ctx context.Context, tx pgx.Tx, tradeID string) error {
+	q := `
+        DELETE FROM public.trade_item
+        WHERE trade_id = $1
+    `
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	if _, err := tx.Exec(ctx, q, tradeID); err != nil {
+		return err
 	}
 
 	return nil
