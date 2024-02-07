@@ -10,7 +10,6 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
-
 )
 
 type AuthHandler struct {

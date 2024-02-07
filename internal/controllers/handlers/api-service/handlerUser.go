@@ -1,4 +1,4 @@
-package handlerUser
+package handlerapi
 
 import (
 	"encoding/json"

@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,7 +33,7 @@ type TradeItem struct {
 	ItemStatus string    `json:"item_status"`
 }
 
-func NewRepository(logger *logging.Logger) *RepositoryTrade {
+func NewRepositoryTrade(logger *logging.Logger) *RepositoryTrade {
 	cfg := config.GetConfig()
 	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
 	if err != nil {
@@ -518,8 +517,4 @@ func (r *RepositoryTrade) deleteTradeItems(ctx context.Context, tx pgx.Tx, trade
 	}
 
 	return nil
-}
-
-func formatQuery(q string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }

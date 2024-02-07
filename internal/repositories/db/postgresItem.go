@@ -12,6 +12,7 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
 )
 
 type RepositoryItem struct {
@@ -26,7 +27,7 @@ type ItemData struct {
 	Description string    `json:"description,omitempty"`
 }
 
-func NewRepository(logger *logging.Logger) *RepositoryItem {
+func NewRepositoryItem(logger *logging.Logger) *RepositoryItem {
 	cfg := config.GetConfig()
 	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
 	if err != nil {

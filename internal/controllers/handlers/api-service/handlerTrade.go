@@ -1,4 +1,4 @@
-package handlerTrade
+package handlerapi
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
 )
 
 type TradeHandler struct {
