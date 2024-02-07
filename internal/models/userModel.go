@@ -6,28 +6,33 @@ import (
 
 	"github.com/google/uuid"
 
-	"go-server/internal/repositories/db/postgresUser"
+	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
-
 )
 
 type User struct {
 	UserId   uuid.UUID `json:"user_id"`
 	Username string    `json:"username,omitempty" validate:"required,min=3,max=100"`
 	Email    string    `json:"email" validate:"required,email,min=6,max=100"`
+	Password string    `json:"password" validate:"required,min=6,max=100"`
 }
 
 func (usr *User) Save() (interface{}, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
 	}
 
 	var data db.UserData
+	var err error
 	data.Username = usr.Username
 	data.Email = usr.Email
+	data.Password, err = generatePasswordHash(usr.Password)
+	if err != nil {
+		logger.Fatalf("Failed to generate password hash: %s", err.Error())
+	}
 
 	if usr.UserId != uuid.Nil {
 		data.UserId = usr.UserId
@@ -37,16 +42,17 @@ func (usr *User) Save() (interface{}, error) {
 	}
 }
 
-func NewUser(username, email string) *User {
+func NewUser(username, email, password string) *User {
 	return &User{
 		Username: username,
 		Email:    email,
+		Password: password,
 	}
 }
 
 func LoadUser(id string) (*User, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -61,13 +67,14 @@ func LoadUser(id string) (*User, error) {
 		data.UserId,
 		data.Username,
 		data.Email,
+		data.Password,
 	}, nil
 
 }
 
 func LoadUsers() ([]*User, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -85,6 +92,7 @@ func LoadUsers() ([]*User, error) {
 			usr.UserId,
 			usr.Username,
 			usr.Email,
+			usr.Password,
 		})
 	}
 	return usrs, nil
@@ -93,7 +101,7 @@ func LoadUsers() ([]*User, error) {
 
 func LoadUserByEmail(email string) (*User, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -108,12 +116,13 @@ func LoadUserByEmail(email string) (*User, error) {
 		data.UserId,
 		data.Username,
 		data.Email,
+		data.Password,
 	}, nil
 }
 
 func DeleteUser(id string) error {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return fmt.Errorf("failed to create repository")
