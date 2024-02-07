@@ -4,10 +4,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"go-server/internal/config"
-	"go-server/internal/controllers/handlers/handlerAuth"
-	"go-server/internal/controllers/handlers/handlerItem"
-	"go-server/internal/controllers/handlers/handlerTrade"
-	"go-server/internal/controllers/handlers/handlerUser"
+	"go-server/internal/controllers/handlers/api-service"
+	"go-server/internal/controllers/handlers/auth-service"
 )
 
 const (
@@ -30,9 +28,9 @@ const (
 func GetRouter(cfg *config.Config) *httprouter.Router {
 	router := httprouter.New()
 
-	tradeHandler := handlerTrade.NewTradeHandler()
-	itemHandler := handlerItem.NewItemHandler()
-	userHandler := handlerUser.NewUserHandler()
+	tradeHandler := handlerapi.NewTradeHandler()
+	itemHandler := handlerapi.NewItemHandler()
+	userHandler := handlerapi.NewUserHandler()
 	authHandler := handlerauth.NewAuthHandler()
 
 	router.GET(itemtradesURL, tradeHandler.GetTradesByItemUUID)
