@@ -2,19 +2,19 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"go-server/internal/repositories/db/postgresUser"
+	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
-
 )
 
 const (
-	salt       = "Odskf834FNwep19f231"
 	singingKey = "JdjJw74DFjdnbr32Aggkde"
 	tokenTTL   = 12 * time.Hour
 )
@@ -24,9 +24,14 @@ type LoginInput struct {
 	Password string `json:"password" validate:"required,min=6,max=100"`
 }
 
+type tokenClaims struct {
+	jwt.StandardClaims
+	UserId uuid.UUID `json:"user_id"`
+}
+
 func (usr *User) CreateUser() (interface{}, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryUser(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -62,10 +67,15 @@ func AuthenticateUser(email, password string) (*User, error) {
 }
 
 func GenerateJWT(user *User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(12 * time.Hour).Unix(),
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
+		jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
+			IssuedAt:  time.Now().Unix(),
+		},
+		user.UserId,
 	})
-	tokenString, err := token.SignedString([]byte("secret-key"))
+
+	tokenString, err := token.SignedString([]byte(singingKey))
 	if err != nil {
 		return "", err
 	}
@@ -78,4 +88,24 @@ func generatePasswordHash(pw string) (string, error) {
 		return "", err
 	}
 	return string(hashedPassword), nil
+}
+
+func ParseToken(accesstoken string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(accesstoken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return uuid.Nil, errors.New("unexpected signing method")
+		}
+		return []byte(singingKey), nil
+
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	claims, ok := token.Claims.(*tokenClaims)
+	if !ok {
+		return uuid.Nil, errors.New("token cliams are not of type")
+	}
+
+	return claims.UserId, nil
 }
