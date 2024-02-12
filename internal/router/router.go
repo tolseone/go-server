@@ -4,9 +4,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"go-server/internal/config"
-	middleware "go-server/internal/controllers/handlers"
-	handlerapi "go-server/internal/controllers/handlers/api-service"
-	handlerauth "go-server/internal/controllers/handlers/auth-service"
+	"go-server/internal/controllers/handlers"
+	"go-server/internal/controllers/handlers/api-service"
+	"go-server/internal/controllers/handlers/auth-service"
 	"go-server/pkg/logging"
 
 )
@@ -45,9 +45,9 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 	router.GET(usertradesURL, tradeHandler.GetTradesByUserUUID)
 
 	router.GET(itemsURL, middleware.AuthMiddleware(itemHandler.GetItemList, logging.GetLogger()))
-	router.GET(itemURL, itemHandler.GetItemByUUID)
-	router.POST(itemsURL, itemHandler.CreateItem)
-	router.DELETE(itemURL, itemHandler.DeleteItemByUUID)
+	router.GET(itemURL, middleware.AuthMiddleware(itemHandler.GetItemByUUID, logging.GetLogger()))
+	router.POST(itemsURL, middleware.AuthMiddleware(itemHandler.CreateItem, logging.GetLogger()))
+	router.DELETE(itemURL, middleware.AuthMiddleware(itemHandler.DeleteItemByUUID, logging.GetLogger()))
 
 	router.GET(usersURL, userHandler.GetUserList)
 	router.GET(userURL, userHandler.GetUserByUUID)
