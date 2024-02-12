@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/julienschmidt/httprouter"
+
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
 )
 
-func AuthMiddleware(next http.Handler, logger *logging.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func AuthMiddleware(next httprouter.Handle, logger *logging.Logger) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
@@ -32,6 +35,6 @@ func AuthMiddleware(next http.Handler, logger *logging.Logger) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), "user", claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		next(w, r.WithContext(ctx), params)
+	}
 }
