@@ -17,6 +17,11 @@ type AuthHandler struct {
 	validator *validator.Validate
 }
 
+type AuthResponse struct {
+	Token  string    `json:"token"`
+	UserID uuid.UUID `json:"userID"`
+}
+
 func NewAuthHandler() *AuthHandler {
 	return &AuthHandler{
 		logger:    logging.GetLogger(),
@@ -73,8 +78,13 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Authorization", "Bearer "+token)
-	w.Write([]byte(token))
+
+	response := AuthResponse{
+		Token:  token,
+		UserID: user.UserId,
+	}
+
+	json.NewEncoder(w).Encode(response)
 	w.WriteHeader(http.StatusOK)
 }
 
