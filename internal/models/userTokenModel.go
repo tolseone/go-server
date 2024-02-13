@@ -10,7 +10,6 @@ import (
 
 	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
-
 )
 
 const (
@@ -30,8 +29,25 @@ type tokenClaims struct {
 	UserId uuid.UUID `json:"user_id"`
 }
 
-func (t *Token) Save() error {
-	return nil
+func (t *Token) Save() (interface{}, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepositoryToken(logger)
+
+	if repo == nil {
+		logger.Fatal("failed to create repository")
+	}
+
+	var data db.TokenData
+	data.UserID = t.UserID
+	data.Token = t.Token
+	data.ExpirationTime = t.ExpirationTime
+
+	if t.ID != uuid.Nil {
+		data.ID = t.ID
+		return repo.Update(context.TODO(), data)
+	} else {
+		return repo.Create(context.TODO(), data)
+	}
 }
 
 func CheckAndDeleteExpiredTokens(interval time.Duration) {
