@@ -2,14 +2,17 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
+
 )
 
 type RepositoryToken struct {
@@ -36,6 +39,72 @@ func NewRepositoryToken(logger *logging.Logger) *RepositoryToken {
 		client: client,
 		logger: logger,
 	}
+}
+
+func (r *RepositoryToken) Create(ctx context.Context, t interface{}) (interface{}, error) {
+	q := `
+		INSERT INTO public.user_token ( 
+			id, 
+			user_id, 
+			token, 
+			expiration_time
+		)
+		VALUES (
+			gen_random_uuid(), 
+			$1,
+			$2,
+			$3
+		) 
+		RETURNING id
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	tokenData := t.(TokenData)
+
+	if err := r.client.QueryRow(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime).Scan(&tokenData.ID); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.Is(err, pgErr) {
+			pgErr = err.(*pgconn.PgError)
+			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
+			r.logger.Error(newErr)
+			return nil, newErr
+		}
+		return nil, err
+
+	}
+	r.logger.Infof("Completed to create token: %v", tokenData)
+	return tokenData.ID, nil
+
+}
+
+func (r *RepositoryToken) Update(ctx context.Context, t interface{}) (interface{}, error) {
+	q := `
+		UPDATE public.user_token 
+		SET 
+			user_id = $1,
+			token = $2,
+			expiration_time = $3
+		WHERE 
+			id = $4
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	tokenData := t.(TokenData)
+
+	_, err := r.client.Exec(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime, tokenData.ID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.Is(err, pgErr) {
+			pgErr = err.(*pgconn.PgError)
+			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
+			r.logger.Error(newErr)
+			return nil, newErr
+		}
+		return nil, err
+	}
+
+	r.logger.Infof("Completed to update token: %v", tokenData.ID)
+	return tokenData.ID, nil
 }
 
 func (r *RepositoryToken) GetExpiredTokens(ctx context.Context, now time.Time) ([]TokenData, error) {
@@ -84,7 +153,9 @@ func (r *RepositoryToken) DeleteToken(ctx context.Context, tokenID uuid.UUID) er
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	_, err := r.client.Exec(ctx, q, tokenID)
+	if _, err := r.client.Exec(ctx, q, tokenID); err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
