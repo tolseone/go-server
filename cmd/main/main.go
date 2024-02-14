@@ -10,6 +10,7 @@ import (
 
 	"go-server/internal/config"
 	"go-server/internal/router"
+	"go-server/internal/schedule"
 	"go-server/pkg/logging"
 
 )
@@ -20,6 +21,8 @@ func main() {
 
 	cfg := config.GetConfig()
 	router := router.GetRouter(cfg)
+
+	go schedule.ScheduleTask()
 
 	start(router, cfg)
 }
