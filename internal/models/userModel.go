@@ -8,6 +8,7 @@ import (
 
 	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
+
 )
 
 type User struct {
@@ -15,6 +16,7 @@ type User struct {
 	Username string    `json:"username,omitempty" validate:"required,min=3,max=100"`
 	Email    string    `json:"email" validate:"required,email,min=6,max=100"`
 	Password string    `json:"password" validate:"required,min=6,max=100"`
+	Role     string    `json:"role,omitempty"`
 }
 
 func (usr *User) Save() (interface{}, error) {
@@ -30,6 +32,7 @@ func (usr *User) Save() (interface{}, error) {
 	data.Username = usr.Username
 	data.Email = usr.Email
 	data.Password, err = generatePasswordHash(usr.Password)
+	data.Role = "user"
 	if err != nil {
 		logger.Fatalf("Failed to generate password hash: %s", err.Error())
 	}
@@ -47,6 +50,7 @@ func NewUser(username, email, password string) *User {
 		Username: username,
 		Email:    email,
 		Password: password,
+		Role:     "user",
 	}
 }
 
@@ -68,6 +72,7 @@ func LoadUser(id string) (*User, error) {
 		data.Username,
 		data.Email,
 		data.Password,
+		data.Role,
 	}, nil
 
 }
@@ -93,6 +98,7 @@ func LoadUsers() ([]*User, error) {
 			usr.Username,
 			usr.Email,
 			usr.Password,
+			usr.Role,
 		})
 	}
 	return usrs, nil
@@ -117,6 +123,7 @@ func LoadUserByEmail(email string) (*User, error) {
 		data.Username,
 		data.Email,
 		data.Password,
+		data.Role,
 	}, nil
 }
 
