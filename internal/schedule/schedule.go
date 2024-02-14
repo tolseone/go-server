@@ -8,6 +8,7 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
 )
 
 func ScheduleTask() {
@@ -21,9 +22,7 @@ func ScheduleTask() {
 	logger.Infof("Scheduler created: %v\n", s)
 
 	j, err := s.NewJob(
-		gocron.DurationJob(
-			10*time.Second,
-		),
+		gocron.CronJob("@every 30s", true),
 		gocron.NewTask(
 			func() {
 				model.CheckAndDeleteExpiredTokens()
