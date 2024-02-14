@@ -10,6 +10,7 @@ import (
 
 	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
+
 )
 
 const (
@@ -50,7 +51,7 @@ func (t *Token) Save() (interface{}, error) {
 	}
 }
 
-func CheckAndDeleteExpiredTokens(interval time.Duration) {
+func CheckAndDeleteExpiredTokens() {
 	logger := logging.GetLogger()
 	repo := db.NewRepositoryToken(logger)
 
@@ -58,25 +59,20 @@ func CheckAndDeleteExpiredTokens(interval time.Duration) {
 		logger.Fatal("failed to create repository")
 	}
 
-	for {
-		now := time.Now()
+	now := time.Now()
 
-		expiredTokens, err := repo.GetExpiredTokens(context.TODO(), now)
+	expiredTokens, err := repo.GetExpiredTokens(context.TODO(), now)
+	if err != nil {
+		logger.Tracef("Error getting expired tokens: %v\n", err)
+	}
+
+	for _, token := range expiredTokens {
+		err := repo.DeleteToken(context.TODO(), token.ID)
 		if err != nil {
-			logger.Tracef("Error getting expired tokens: %v\n", err)
+			logger.Tracef("Error deleting expired token %s: %v\n", token.ID, err)
 			continue
 		}
-
-		for _, token := range expiredTokens {
-			err := repo.DeleteToken(context.TODO(), token.ID)
-			if err != nil {
-				logger.Tracef("Error deleting expired token %s: %v\n", token.ID, err)
-				continue
-			}
-			logger.Tracef("Expired token deleted: %s\n", token.ID)
-		}
-
-		time.Sleep(interval)
+		logger.Tracef("Expired token deleted: %s\n", token.ID)
 	}
 }
 
@@ -104,22 +100,31 @@ func DeleteExpiredTokens() error {
 	return nil
 }
 
-func ParseToken(accesstoken string) (uuid.UUID, error) {
+func ParseToken(accesstoken string) (*Token, error) {
 	token, err := jwt.ParseWithClaims(accesstoken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return uuid.Nil, errors.New("unexpected signing method")
+			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(SingingKey), nil
-
 	})
 	if err != nil {
-		return uuid.Nil, err
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid token")
 	}
 
 	claims, ok := token.Claims.(*tokenClaims)
 	if !ok {
-		return uuid.Nil, errors.New("token claims are not of type")
+		return nil, errors.New("token claims are not of type")
 	}
 
-	return claims.UserId, nil
+	parsedToken := &Token{
+		UserID:         claims.UserId,
+		Token:          accesstoken,
+		ExpirationTime: time.Unix(claims.ExpiresAt, 0),
+	}
+
+	return parsedToken, nil
 }
