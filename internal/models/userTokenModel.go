@@ -15,7 +15,7 @@ import (
 
 const (
 	SingingKey = "JdjJw74DFjdnbr32Aggkde"
-	tokenTTL   = 12 * time.Hour
+	tokenTTL   = 120 * time.Second // 12 * time.Hour
 )
 
 type Token struct {
@@ -23,11 +23,13 @@ type Token struct {
 	UserID         uuid.UUID `json:"user_id"`
 	Token          string    `json:"token"`
 	ExpirationTime time.Time `json:"expiration_time"`
+	UserAgent      string    `json:"user_agent"`
 }
 
 type tokenClaims struct {
 	jwt.StandardClaims
-	UserId uuid.UUID `json:"user_id"`
+	UserId    uuid.UUID `json:"user_id"`
+	UserAgent string    `json:"user_agent"`
 }
 
 func (t *Token) Save() (interface{}, error) {
@@ -36,12 +38,14 @@ func (t *Token) Save() (interface{}, error) {
 
 	if repo == nil {
 		logger.Fatal("failed to create repository")
+		return nil, errors.New("failed to create repository")
 	}
 
 	var data db.TokenData
 	data.UserID = t.UserID
 	data.Token = t.Token
 	data.ExpirationTime = t.ExpirationTime
+	data.UserAgent = t.UserAgent
 
 	if t.ID != uuid.Nil {
 		data.ID = t.ID
@@ -76,13 +80,14 @@ func CheckAndDeleteExpiredTokens() {
 	}
 }
 
-func GenerateJWT(user *User) (string, error) {
+func GenerateJWT(user *User, ua string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
 		user.UserId,
+		ua,
 	})
 
 	tokenString, err := token.SignedString([]byte(SingingKey))
@@ -90,6 +95,31 @@ func GenerateJWT(user *User) (string, error) {
 		return "", err
 	}
 	return tokenString, nil
+}
+
+func GetTokenByUserAgent(ua string) (*Token, error) {
+	logger := logging.GetLogger()
+	repo := db.NewRepositoryToken(logger)
+
+	if repo == nil {
+		logger.Fatal("failed to create repository")
+		return nil, errors.New("failed to create repository")
+	}
+
+	data, err := repo.GetTokenByUA(context.TODO(), ua)
+	if err != nil {
+		logger.Tracef("Failed to get token by user agent: %v\n", err)
+		return nil, err
+	}
+
+	return &Token{
+		data.ID,
+		data.UserID,
+		data.Token,
+		data.ExpirationTime,
+		data.UserAgent,
+	}, nil
+
 }
 
 func FindTokensByUserID(userID uuid.UUID) ([]Token, error) {
@@ -124,6 +154,7 @@ func ParseToken(accesstoken string) (*Token, error) {
 		UserID:         claims.UserId,
 		Token:          accesstoken,
 		ExpirationTime: time.Unix(claims.ExpiresAt, 0),
+		UserAgent:      claims.UserAgent,
 	}
 
 	return parsedToken, nil

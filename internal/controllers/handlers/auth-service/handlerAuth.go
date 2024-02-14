@@ -74,7 +74,24 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 		return
 	}
 
-	token, err := model.GenerateJWT(user)
+	userAgent := r.Header.Get("User-Agent")
+	existingToken, err := model.GetTokenByUserAgent(userAgent)
+	if err != nil {
+		h.logger.Tracef("Failed to get token by User-Agent: %v", err)
+	}
+
+	if existingToken != nil {
+		response := AuthResponse{
+			Token:  existingToken.Token,
+			UserID: existingToken.UserID,
+		}
+
+		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	token, err := model.GenerateJWT(user, userAgent)
 	if err != nil {
 		h.logger.Tracef("Failed to generate token: %v", err)
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
@@ -83,14 +100,14 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 
 	tokenData, err = model.ParseToken(token)
 	if err != nil {
-		h.logger.Fatalf("Failed to parse token: %v", err)
+		h.logger.Tracef("Failed to parse token: %v", err)
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
 
 	_, err = tokenData.Save()
 	if err != nil {
-		h.logger.Fatalf("Failed to save token: %v", err)
+		h.logger.Tracef("Failed to save token: %v", err)
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}

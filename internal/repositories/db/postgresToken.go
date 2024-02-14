@@ -25,6 +25,7 @@ type TokenData struct {
 	UserID         uuid.UUID `json:"user_id"`
 	Token          string    `json:"token"`
 	ExpirationTime time.Time `json:"expiration_time"`
+	UserAgent      string    `json:"user_agent"`
 }
 
 func NewRepositoryToken(logger *logging.Logger) *RepositoryToken {
@@ -47,13 +48,15 @@ func (r *RepositoryToken) Create(ctx context.Context, t interface{}) (interface{
 			id, 
 			user_id, 
 			token, 
-			expiration_time
+			expiration_time,
+			user_agent
 		)
 		VALUES (
 			gen_random_uuid(), 
 			$1,
 			$2,
-			$3
+			$3,
+			$4
 		) 
 		RETURNING id
 	`
@@ -61,7 +64,7 @@ func (r *RepositoryToken) Create(ctx context.Context, t interface{}) (interface{
 
 	tokenData := t.(TokenData)
 
-	if err := r.client.QueryRow(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime).Scan(&tokenData.ID); err != nil {
+	if err := r.client.QueryRow(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime, tokenData.UserAgent).Scan(&tokenData.ID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
@@ -83,15 +86,16 @@ func (r *RepositoryToken) Update(ctx context.Context, t interface{}) (interface{
 		SET 
 			user_id = $1,
 			token = $2,
-			expiration_time = $3
+			expiration_time = $3,
+			user_agent = $4
 		WHERE 
-			id = $4
+			id = $5
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	tokenData := t.(TokenData)
 
-	_, err := r.client.Exec(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime, tokenData.ID)
+	_, err := r.client.Exec(ctx, q, tokenData.UserID, tokenData.Token, tokenData.ExpirationTime, tokenData.UserAgent, tokenData.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -142,6 +146,29 @@ func (r *RepositoryToken) GetExpiredTokens(ctx context.Context, now time.Time) (
 	}
 
 	return tokens, nil
+}
+
+func (r *RepositoryToken) GetTokenByUA(ctx context.Context, ua string) (TokenData, error) {
+	q := `
+		SELECT 
+			id, 
+			user_id, 
+			token, 
+			expiration_time,
+			user_agent
+		FROM public.user_token
+		WHERE 
+			user_agent = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	var token TokenData
+	err := r.client.QueryRow(ctx, q, ua).Scan(&token.ID, &token.UserID, &token.Token, &token.ExpirationTime, &token.UserAgent)
+	if err != nil {
+		return TokenData{}, err
+	}
+
+	return token, nil
 }
 
 func (r *RepositoryToken) DeleteToken(ctx context.Context, tokenID uuid.UUID) error {
