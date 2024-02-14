@@ -5,6 +5,7 @@ import (
 
 	"go-server/internal/config"
 	"go-server/internal/controllers/handlers"
+	"go-server/internal/controllers/handlers/admin"
 	"go-server/internal/controllers/handlers/api-service"
 	"go-server/internal/controllers/handlers/auth-service"
 	"go-server/pkg/logging"
@@ -26,6 +27,13 @@ const (
 	registerURL = "/api/register"
 	loginURL    = "/api/login"
 	logoutURL   = "/api/logout"
+
+	usersURLAdmin  = "/api/admin/users"
+	userURLAdmin   = "/api/admin/users/:uuid"
+	itemsURLAdmin  = "/api/admin/items"
+	itemURLAdmin   = "/api/admin/items/:uuid"
+	tradeURLAdmin  = "/api/admin/trades/:uuid"
+	tradesURLAdmin = "/api/admin/trades"
 )
 
 func GetRouter(cfg *config.Config) *httprouter.Router {
@@ -35,6 +43,7 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 	itemHandler := handlerapi.NewItemHandler()
 	userHandler := handlerapi.NewUserHandler()
 	authHandler := handlerauth.NewAuthHandler()
+	adminHandler := handleradmin.NewAdminHandler()
 
 	router.GET(itemtradesURL, tradeHandler.GetTradesByItemUUID)
 	router.GET(tradesURL, tradeHandler.GetTradeList)
@@ -58,6 +67,23 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 	router.POST(registerURL, authHandler.RegisterUser)
 	router.POST(loginURL, authHandler.LoginUser)
 	router.POST(logoutURL, authHandler.LogoutUser)
+
+	router.POST(usersURLAdmin, adminHandler.CreateUser)
+	router.GET(usersURLAdmin, adminHandler.GetUserList)
+	router.GET(userURLAdmin, adminHandler.GetUserByUUID)
+	router.PUT(userURLAdmin, adminHandler.UpdateUserByUUID)
+	router.PATCH(userURLAdmin, adminHandler.UpdateUserRoleByUUID)
+	router.DELETE(userURLAdmin, adminHandler.DeleteUserByUUID)
+	router.POST(itemURLAdmin, adminHandler.CreateItem)
+	router.GET(itemsURLAdmin, adminHandler.GetItemList)
+	router.GET(itemURLAdmin, adminHandler.GetItemByUUID)
+	router.PUT(itemURLAdmin, adminHandler.UpdateItemByUUID)
+	router.DELETE(itemURLAdmin, adminHandler.DeleteItemByUUID)
+	router.POST(tradeURLAdmin, adminHandler.CreateTrade)
+	router.GET(tradesURLAdmin, adminHandler.GetTradeList)
+	router.GET(tradeURLAdmin, adminHandler.GetTradeByTradeUUID)
+	router.PUT(tradeURLAdmin, adminHandler.UpdateTradeByUUID)
+	router.DELETE(tradeURLAdmin, adminHandler.DeleteTradeByUUID)
 
 	return router
 }
