@@ -10,6 +10,7 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
+
 )
 
 type AuthHandler struct {
@@ -32,8 +33,7 @@ func NewAuthHandler() *AuthHandler {
 func (h *AuthHandler) RegisterUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	var newUser model.User
 
-	err := json.NewDecoder(r.Body).Decode(&newUser)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -57,10 +57,12 @@ func (h *AuthHandler) RegisterUser(w http.ResponseWriter, r *http.Request, param
 }
 
 func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	var credentials model.LoginInput
+	var (
+		credentials model.LoginInput
+		tokenData   *model.Token
+	)
 
-	err := json.NewDecoder(r.Body).Decode(&credentials)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -79,9 +81,23 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 		return
 	}
 
+	tokenData, err = model.ParseToken(token)
+	if err != nil {
+		h.logger.Fatalf("Failed to parse token: %v", err)
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = tokenData.Save()
+	if err != nil {
+		h.logger.Fatalf("Failed to save token: %v", err)
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
 	response := AuthResponse{
-		Token:  token,
-		UserID: user.UserId,
+		Token:  tokenData.Token,
+		UserID: tokenData.UserID,
 	}
 
 	json.NewEncoder(w).Encode(response)
