@@ -3,6 +3,7 @@ package handlerauth
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -10,7 +11,6 @@ import (
 
 	"go-server/internal/models"
 	"go-server/pkg/logging"
-
 )
 
 type AuthHandler struct {
@@ -101,14 +101,14 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 	tokenData, err = model.ParseToken(token)
 	if err != nil {
 		h.logger.Tracef("Failed to parse token: %v", err)
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		http.Error(w, "Failed to parse token", http.StatusInternalServerError)
 		return
 	}
 
 	_, err = tokenData.Save()
 	if err != nil {
 		h.logger.Tracef("Failed to save token: %v", err)
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		http.Error(w, "Failed to save token", http.StatusInternalServerError)
 		return
 	}
 
@@ -122,6 +122,34 @@ func (h *AuthHandler) LoginUser(w http.ResponseWriter, r *http.Request, params h
 }
 
 func (h *AuthHandler) LogoutUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
+		return
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := parts[1]
+
+	claims, err := model.ParseToken(tokenString)
+	if err != nil {
+		h.logger.Errorf("Invalid or expired token: %v", err)
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
+
+	err = model.DeleteTokenByUserID(claims.UserID.String())
+	if err != nil {
+		h.logger.Errorf("Failed to delete token: %v", err)
+		http.Error(w, "Failed to logout", http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Logged out successfully"))
+	w.Write([]byte("Logged out successfully!"))
 }
