@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -34,7 +33,31 @@ func AuthMiddleware(next httprouter.Handle, logger *logging.Logger) httprouter.H
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", claims)
-		next(w, r.WithContext(ctx), params)
+		if claims.UserRole == "admin" {
+			next(w, r, params)
+			return
+		} else if claims.UserRole == "user" {
+			if isPathForAdmin(r.URL.Path) {
+				http.Error(w, "Access denied for user role", http.StatusForbidden)
+				return
+			}
+			next(w, r, params)
+			return
+		} else {
+			http.Error(w, "Unknown user role", http.StatusForbidden)
+			return
+		}
 	}
+}
+
+func isPathForAdmin(path string) bool {
+	adminURLs := []string{"/api/admin/users"}
+
+	for _, url := range adminURLs {
+		if path == url || strings.HasPrefix(path, url+"/") {
+			return true
+		}
+	}
+
+	return false
 }
