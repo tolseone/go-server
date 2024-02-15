@@ -7,9 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"go-server/internal/repositories/db/postgresTrade"
+	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
-
 )
 
 type Trade struct {
@@ -40,7 +39,7 @@ func NewTrade(userID uuid.UUID, offeredItems, requestedItems []*Item) *Trade {
 
 func (t *Trade) Save() (interface{}, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -76,7 +75,7 @@ func (t *Trade) Save() (interface{}, error) {
 
 func LoadTradeList() ([]*Trade, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -116,7 +115,7 @@ func LoadTradeList() ([]*Trade, error) {
 
 func LoadTradeByID(tradeID string) (*Trade, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -152,7 +151,7 @@ func LoadTradeByID(tradeID string) (*Trade, error) {
 
 func DeleteTradeByID(tradeID string) error {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return fmt.Errorf("failed to create repository")
@@ -167,7 +166,7 @@ func DeleteTradeByID(tradeID string) error {
 
 func LoadTradesByItemUUID(itemID string) ([]*Trade, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -207,7 +206,7 @@ func LoadTradesByItemUUID(itemID string) ([]*Trade, error) {
 
 func LoadTradesByUserUUID(userID string) ([]*Trade, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryTrade(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")

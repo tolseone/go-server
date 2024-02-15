@@ -6,9 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"go-server/internal/repositories/db/postgresItem"
+	"go-server/internal/repositories/db"
 	"go-server/pkg/logging"
-
 )
 
 type Item struct {
@@ -20,7 +19,7 @@ type Item struct {
 
 func (itm *Item) Save() (interface{}, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryItem(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -47,7 +46,7 @@ func NewItem(name, rarity, description string) *Item {
 }
 func LoadItem(id string) (*Item, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryItem(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -69,7 +68,7 @@ func LoadItem(id string) (*Item, error) {
 
 func LoadItems() ([]*Item, error) {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryItem(logger)
 
 	if repo == nil {
 		return nil, fmt.Errorf("failed to create repository")
@@ -96,7 +95,7 @@ func LoadItems() ([]*Item, error) {
 
 func DeleteItem(id string) error {
 	logger := logging.GetLogger()
-	repo := db.NewRepository(logger)
+	repo := db.NewRepositoryItem(logger)
 
 	if repo == nil {
 		return fmt.Errorf("failed to create repository")

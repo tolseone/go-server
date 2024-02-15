@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,9 +22,11 @@ type UserData struct {
 	UserId   uuid.UUID `json:"user_id"`
 	Username string    `json:"username,omitempty"`
 	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	Role     string    `json:"role,omitempty"`
 }
 
-func NewRepository(logger *logging.Logger) *RepositoryUser {
+func NewRepositoryUser(logger *logging.Logger) *RepositoryUser {
 	cfg := config.GetConfig()
 	client, err := postgresql.NewClient(context.TODO(), 3, cfg.Storage)
 	if err != nil {
@@ -45,19 +46,23 @@ func (r *RepositoryUser) Create(ctx context.Context, u interface{}) (interface{}
 		INSERT INTO public.user (
 			id, 
 			name, 
-			email 
+			email,
+			password,
+			role 
 		) 
 		VALUES (
 			gen_random_uuid(), 
 			$1, 
-			$2
+			$2,
+			$3,
+			$4
 		)
 		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	userData := u.(UserData)
 
-	if err := r.client.QueryRow(ctx, q, userData.Username, userData.Email).Scan(&userData.UserId); err != nil {
+	if err := r.client.QueryRow(ctx, q, userData.Username, userData.Email, userData.Password, userData.Role).Scan(&userData.UserId); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
@@ -94,7 +99,9 @@ func (r *RepositoryUser) FindAll(ctx context.Context) ([]UserData, error) {
         SELECT 
 			id, 
 			name, 
-			email 
+			email,
+			password,
+			role
 		FROM public.user
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
@@ -108,7 +115,7 @@ func (r *RepositoryUser) FindAll(ctx context.Context) ([]UserData, error) {
 	for rows.Next() {
 		var us UserData
 
-		if err := rows.Scan(&us.UserId, &us.Username, &us.Email); err != nil {
+		if err := rows.Scan(&us.UserId, &us.Username, &us.Email, &us.Password, &us.Role); err != nil {
 			return nil, err
 		}
 
@@ -127,7 +134,9 @@ func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, erro
         SELECT 
 			id, 
 			name, 
-			email 
+			email,
+			password,
+			role
 		FROM public.user 
 		WHERE 
 			id = $1
@@ -135,7 +144,7 @@ func (r *RepositoryUser) FindOne(ctx context.Context, id string) (UserData, erro
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	var u UserData
-	err := r.client.QueryRow(ctx, q, id).Scan(&u.UserId, &u.Username, &u.Email)
+	err := r.client.QueryRow(ctx, q, id).Scan(&u.UserId, &u.Username, &u.Email, &u.Password, &u.Role)
 	if err != nil {
 		return UserData{}, err
 	}
@@ -148,7 +157,9 @@ func (r *RepositoryUser) FindUserByEmail(ctx context.Context, email string) (Use
         SELECT 
 			id, 
 			name, 
-			email 
+			email,
+			password,
+			role 
 		FROM public.user 
 		WHERE 
 			email = $1
@@ -156,7 +167,7 @@ func (r *RepositoryUser) FindUserByEmail(ctx context.Context, email string) (Use
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	var u UserData
-	err := r.client.QueryRow(ctx, q, email).Scan(&u.UserId, &u.Username, &u.Email)
+	err := r.client.QueryRow(ctx, q, email).Scan(&u.UserId, &u.Username, &u.Email, &u.Password, &u.Role)
 	if err != nil {
 		return UserData{}, err
 	}
@@ -169,7 +180,9 @@ func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interfac
 		UPDATE public.user 
 		SET 
 			name = $2, 
-			email = $3 
+			email = $3,
+			password = $4,
+			role = $5 
 		WHERE 
 			id = $1
 	`
@@ -177,13 +190,28 @@ func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interfac
 
 	updatedUser := user.(UserData)
 
-	if _, err := r.client.Exec(ctx, q, updatedUser.UserId, updatedUser.Username, updatedUser.Email); err != nil {
+	if _, err := r.client.Exec(ctx, q, updatedUser.UserId, updatedUser.Username, updatedUser.Email, updatedUser.Password, updatedUser.Role); err != nil {
 		return nil, err
 	}
 
 	return nil, nil
 }
 
-func formatQuery(q string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
+func (r *RepositoryUser) UpdateUserRole(ctx context.Context, id, role string) error {
+	q := `
+		UPDATE public.user 
+		SET 
+			role = $2 
+		WHERE 
+			id = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	_, err := r.client.Exec(ctx, q, id, role)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
