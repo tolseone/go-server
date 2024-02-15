@@ -22,7 +22,7 @@ func ScheduleTask() {
 	logger.Infof("Scheduler created: %v\n", s)
 
 	j, err := s.NewJob(
-		gocron.CronJob("@every 30s", true),
+		gocron.CronJob("@every 300s", true),
 		gocron.NewTask(
 			func() {
 				model.CheckAndDeleteExpiredTokens()
