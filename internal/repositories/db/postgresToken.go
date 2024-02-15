@@ -26,6 +26,7 @@ type TokenData struct {
 	Token          string    `json:"token"`
 	ExpirationTime time.Time `json:"expiration_time"`
 	UserAgent      string    `json:"user_agent"`
+	UserRole       string    `json:"user_role"`
 }
 
 func NewRepositoryToken(logger *logging.Logger) *RepositoryToken {
@@ -181,6 +182,22 @@ func (r *RepositoryToken) DeleteToken(ctx context.Context, tokenID uuid.UUID) er
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	if _, err := r.client.Exec(ctx, q, tokenID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RepositoryToken) DeleteTokenByUserID(ctx context.Context, userID string) error {
+	q := `
+		DELETE 
+		FROM public.user_token 
+		WHERE 
+			user_id = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	if _, err := r.client.Exec(ctx, q, userID); err != nil {
 		return err
 	}
 

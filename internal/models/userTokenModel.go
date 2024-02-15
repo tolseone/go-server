@@ -15,7 +15,7 @@ import (
 
 const (
 	SingingKey = "JdjJw74DFjdnbr32Aggkde"
-	tokenTTL   = 120 * time.Second // 12 * time.Hour
+	tokenTTL   = 12 * time.Hour
 )
 
 type Token struct {
@@ -24,12 +24,14 @@ type Token struct {
 	Token          string    `json:"token"`
 	ExpirationTime time.Time `json:"expiration_time"`
 	UserAgent      string    `json:"user_agent"`
+	UserRole       string    `json:"user_role"`
 }
 
-type tokenClaims struct {
+type TokenClaims struct {
 	jwt.StandardClaims
 	UserId    uuid.UUID `json:"user_id"`
 	UserAgent string    `json:"user_agent"`
+	UserRole  string    `json:"user_role"`
 }
 
 func (t *Token) Save() (interface{}, error) {
@@ -46,6 +48,7 @@ func (t *Token) Save() (interface{}, error) {
 	data.Token = t.Token
 	data.ExpirationTime = t.ExpirationTime
 	data.UserAgent = t.UserAgent
+	data.UserRole = t.UserRole
 
 	if t.ID != uuid.Nil {
 		data.ID = t.ID
@@ -81,13 +84,14 @@ func CheckAndDeleteExpiredTokens() {
 }
 
 func GenerateJWT(user *User, ua string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &TokenClaims{
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
 		user.UserId,
 		ua,
+		user.Role,
 	})
 
 	tokenString, err := token.SignedString([]byte(SingingKey))
@@ -118,6 +122,7 @@ func GetTokenByUserAgent(ua string) (*Token, error) {
 		data.Token,
 		data.ExpirationTime,
 		data.UserAgent,
+		data.UserRole,
 	}, nil
 
 }
@@ -126,12 +131,24 @@ func FindTokensByUserID(userID uuid.UUID) ([]Token, error) {
 	return nil, nil
 }
 
-func DeleteExpiredTokens() error {
+func DeleteTokenByUserID(userID string) error {
+	logger := logging.GetLogger()
+	repo := db.NewRepositoryToken(logger)
+
+	if repo == nil {
+		logger.Fatal("failed to create repository")
+		return errors.New("failed to create repository")
+	}
+
+	if err := repo.DeleteTokenByUserID(context.TODO(), userID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func ParseToken(accesstoken string) (*Token, error) {
-	token, err := jwt.ParseWithClaims(accesstoken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(accesstoken, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
@@ -145,7 +162,7 @@ func ParseToken(accesstoken string) (*Token, error) {
 		return nil, errors.New("invalid token")
 	}
 
-	claims, ok := token.Claims.(*tokenClaims)
+	claims, ok := token.Claims.(*TokenClaims)
 	if !ok {
 		return nil, errors.New("token claims are not of type")
 	}
@@ -155,6 +172,7 @@ func ParseToken(accesstoken string) (*Token, error) {
 		Token:          accesstoken,
 		ExpirationTime: time.Unix(claims.ExpiresAt, 0),
 		UserAgent:      claims.UserAgent,
+		UserRole:       claims.UserRole,
 	}
 
 	return parsedToken, nil
