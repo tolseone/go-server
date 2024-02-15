@@ -11,7 +11,6 @@ import (
 	"go-server/internal/config"
 	"go-server/pkg/client/postgresql"
 	"go-server/pkg/logging"
-
 )
 
 type RepositoryUser struct {
@@ -196,4 +195,23 @@ func (r *RepositoryUser) Update(ctx context.Context, user interface{}) (interfac
 	}
 
 	return nil, nil
+}
+
+func (r *RepositoryUser) UpdateUserRole(ctx context.Context, id, role string) error {
+	q := `
+		UPDATE public.user 
+		SET 
+			role = $2 
+		WHERE 
+			id = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	_, err := r.client.Exec(ctx, q, id, role)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
