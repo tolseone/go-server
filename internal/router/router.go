@@ -9,7 +9,6 @@ import (
 	"go-server/internal/controllers/handlers/api-service"
 	"go-server/internal/controllers/handlers/auth-service"
 	"go-server/pkg/logging"
-
 )
 
 const (
@@ -66,13 +65,13 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 
 	router.POST(registerURL, authHandler.RegisterUser)
 	router.POST(loginURL, authHandler.LoginUser)
-	router.POST(logoutURL, authHandler.LogoutUser)
+	router.DELETE(logoutURL, authHandler.LogoutUser)
 
-	router.POST(usersURLAdmin, adminHandler.CreateUser)
-	router.GET(usersURLAdmin, adminHandler.GetUserList)
-	router.GET(userURLAdmin, adminHandler.GetUserByUUID)
-	router.PUT(userURLAdmin, adminHandler.UpdateUserByUUID)
-	router.PATCH(userURLAdmin, adminHandler.UpdateUserRoleByUUID)
+	router.POST(usersURLAdmin, middleware.AuthMiddleware(adminHandler.CreateUser, logging.GetLogger()))
+	router.GET(usersURLAdmin, middleware.AuthMiddleware(adminHandler.GetUserList, logging.GetLogger()))
+	router.GET(userURLAdmin, middleware.AuthMiddleware(adminHandler.GetUserByUUID, logging.GetLogger()))
+	router.PUT(userURLAdmin, middleware.AuthMiddleware(adminHandler.UpdateUserByUUID, logging.GetLogger()))
+	router.PATCH(userURLAdmin, middleware.AuthMiddleware(adminHandler.UpdateUserRoleByUUID, logging.GetLogger()))
 	router.DELETE(userURLAdmin, adminHandler.DeleteUserByUUID)
 	router.POST(itemURLAdmin, adminHandler.CreateItem)
 	router.GET(itemsURLAdmin, adminHandler.GetItemList)
