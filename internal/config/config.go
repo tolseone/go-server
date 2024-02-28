@@ -1,10 +1,12 @@
 package config
 
 import (
-	"go-server/pkg/logging"
 	"sync"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
+	"go-server/pkg/logging"
 )
 
 type Config struct {
@@ -14,7 +16,9 @@ type Config struct {
 		BindIP string `yaml:"bind_ip" env-default:"127.0.0.1"` // Есть дефолт значения
 		Port   string `yaml:"port" env-default:"8080"`         // Есть дефолт значения
 	} `yaml:"listen"`
-	Storage StorageConfig `yaml:"storage"`
+	Storage   StorageConfig `yaml:"storage"`
+	Clients   ClientsConfig `yaml:"clients"`
+	AppSecret string        `yaml:"app_secret" env-required:"true" env:"APP_SECRET"`
 }
 
 type StorageConfig struct {
@@ -23,6 +27,16 @@ type StorageConfig struct {
 	Database string `json:"database"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type Client struct {
+	Address      string        `yaml:"address"`
+	Timeout      time.Duration `yaml:"timeout"`
+	RetriesCount int           `yaml:"retries_count"`
+}
+
+type ClientsConfig struct {
+	Auth Client `yaml:"auth"`
 }
 
 var instance *Config
