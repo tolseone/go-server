@@ -7,6 +7,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 
 	"go-server/pkg/logging"
+
 )
 
 type Config struct {
@@ -37,6 +38,7 @@ type Client struct {
 
 type ClientsConfig struct {
 	Auth Client `yaml:"auth"`
+	Item Client `yaml:"item"`
 }
 
 var instance *Config
