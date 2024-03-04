@@ -6,12 +6,15 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	grpclog "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	grpcretry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	itemv1 "github.com/tolseone/protos/gen/go/item"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+
+	model "go-server/internal/models"
 
 )
 
@@ -23,19 +26,19 @@ type Client struct {
 func New(ctx context.Context, log *slog.Logger, addr string, timeout time.Duration, retriesCount int) (*Client, error) {
 	const op = "grpc.New"
 
-	// Опции для интерсептора grpcretry
+	// Options for interceptor grpcretry
 	retryOpts := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),
 		grpcretry.WithMax(uint(retriesCount)),
 		grpcretry.WithPerRetryTimeout(timeout),
 	}
 
-	// Опции для интерсептора grpclog
+	// Options for interceptor grpclog
 	logOpts := []grpclog.Option{
 		grpclog.WithLogOnEvents(grpclog.PayloadReceived, grpclog.PayloadSent),
 	}
 
-	// Создаём соединение с gRPC-сервером AUTH для клиента
+	// Create connection with gRPC-server ITEM for client
 	cc, err := grpc.DialContext(ctx, addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(
@@ -46,7 +49,7 @@ func New(ctx context.Context, log *slog.Logger, addr string, timeout time.Durati
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Создаём gRPC-клиент SSO/Auth
+	// Create gRPC-client ITEM
 	grpcClient := itemv1.NewItemServiceClient(cc)
 
 	return &Client{
@@ -62,7 +65,7 @@ func InterceptorLogger(l *slog.Logger) grpclog.Logger {
 	})
 }
 
-func (c *Client) CreateItem(ctx context.Context, name string, rarity string, description string) (string, error) {
+func (c *Client) CreateItem(ctx context.Context, name string, rarity string, description string) (uuid.UUID, error) {
 	const op = "grpc.CreateItem"
 
 	resp, err := c.api.CreateItem(ctx, &itemv1.CreateItemRequest{
@@ -71,10 +74,84 @@ func (c *Client) CreateItem(ctx context.Context, name string, rarity string, des
 		Description: description,
 	})
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
+		c.log.Error("%s: %s", op, err)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return resp.ItemId, nil
+	ItemID, err := uuid.Parse(resp.GetItemId())
+	if err != nil {
+		c.log.Error("%s: %s", op, err)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return ItemID, nil
 }
 
-func (c *Client) GetItem(ctx context.Context, itemID string) ()
+func (c *Client) GetAllItems(ctx context.Context) ([]*model.Item, error) {
+	const op = "grpc.GetItemList"
+
+	resp, err := c.api.GetAllItems(ctx, &itemv1.GetAllItemsRequest{})
+	if err != nil {
+		return []*model.Item{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	items := resp.GetItems()
+
+	var newItems []*model.Item
+
+	for _, item := range items {
+		itemId, err := uuid.Parse(item.GetItemId())
+		if err != nil {
+			c.log.Info("failed to parse item id", slog.Any("item_id", item.GetItemId))
+		}
+
+		newItem := &model.Item{
+			ItemId:      itemId,
+			Name:        item.GetName(),
+			Rarity:      item.GetRarity(),
+			Description: item.GetDescription(),
+		}
+
+		newItems = append(newItems, newItem)
+	}
+
+	return newItems, nil
+}
+
+func (c *Client) GetItem(ctx context.Context, itemId string) (*model.Item, error) {
+	const op = "grpc.GetItem"
+
+	resp, err := c.api.GetItem(ctx, &itemv1.GetItemRequest{
+		ItemId: itemId,
+	})
+	if err != nil {
+		return &model.Item{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	item := resp.GetItem()
+
+	itemID, err := uuid.Parse(item.GetItemId())
+	if err != nil {
+		c.log.Info("failed to parse item id", slog.Any("item_id", item.GetItemId))
+	}
+
+	return &model.Item{
+		ItemId:      itemID,
+		Name:        item.GetName(),
+		Rarity:      item.GetRarity(),
+		Description: item.GetDescription(),
+	}, nil
+}
+
+func (c *Client) DeleteItem(ctx context.Context, itemId string) (*model.Item, error) {
+	const op = "grpc.DeleteItem"
+
+	_, err := c.api.DeleteItem(ctx, &itemv1.DeleteItemRequest{
+		ItemId: itemId,
+	})
+	if err != nil {
+		return &model.Item{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &model.Item{}, nil
+}

@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+
 )
 
 type Client struct {
@@ -22,19 +23,19 @@ type Client struct {
 func New(ctx context.Context, log *slog.Logger, addr string, timeout time.Duration, retriesCount int) (*Client, error) {
 	const op = "grpc.New"
 
-	// Опции для интерсептора grpcretry
+	// Options for interceptor grpcretry
 	retryOpts := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),
 		grpcretry.WithMax(uint(retriesCount)),
 		grpcretry.WithPerRetryTimeout(timeout),
 	}
 
-	// Опции для интерсептора grpclog
+	// Options for interceptor grpclog
 	logOpts := []grpclog.Option{
 		grpclog.WithLogOnEvents(grpclog.PayloadReceived, grpclog.PayloadSent),
 	}
 
-	// Создаём соединение с gRPC-сервером AUTH для клиента
+	// Create connection with gRPC-server AUTH for client
 	cc, err := grpc.DialContext(ctx, addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(
@@ -45,7 +46,7 @@ func New(ctx context.Context, log *slog.Logger, addr string, timeout time.Durati
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Создаём gRPC-клиент SSO/Auth
+	// Create gRPC-client SSO/Auth
 	grpcClient := ssov1.NewAuthClient(cc)
 
 	return &Client{
