@@ -6,18 +6,18 @@ listen:
   bind_ip: 0.0.0.0
   port: 1234
 storage:
-  host: localhost # postgres
+  host: postgres # localhost
   port: 5432
   database: postgres
   username: postgres
   password: postgres
 clients:
-  auth:
-    address: 127.0.0.1:44044
-    timeout: 5s
-    retries_count: 3
   item:
-    address: 127.0.0.1:44044
+    address: item-service:44044 # 0.0.0.0:44044 # 127.0.0.1:44044
     timeout: 5s
     retries_count: 3
 app_secret: qweqweqwe
+  # auth:
+  #   address: 127.0.0.1:44044
+  #   timeout: 5s
+  #   retries_count: 3
