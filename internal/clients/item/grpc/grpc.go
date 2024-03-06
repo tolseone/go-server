@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	model "go-server/internal/models"
-
 )
 
 type Client struct {
@@ -54,6 +53,7 @@ func New(ctx context.Context, log *slog.Logger, addr string, timeout time.Durati
 
 	return &Client{
 		api: grpcClient,
+		log: log,
 	}, nil
 }
 

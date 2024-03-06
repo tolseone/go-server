@@ -10,7 +10,7 @@ import (
 	"go-server/internal/config"
 )
 
-func NewItemClient(ctx context.Context, cfg *config.Config) (*itemgrpc.Client, error) {
+func CreateItemClient(ctx context.Context, cfg *config.Config) (*itemgrpc.Client, error) { // составить на русском языке что делает этот метод
 	loggerSlog := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	itemClient, err := itemgrpc.New(ctx, loggerSlog, cfg.Clients.Item.Address, cfg.Clients.Item.Timeout, cfg.Clients.Item.RetriesCount)
 	if err != nil {

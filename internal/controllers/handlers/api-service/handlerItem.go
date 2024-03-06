@@ -24,8 +24,8 @@ type ItemHandler struct {
 
 func NewItemHandler() *ItemHandler {
 	config := config.GetConfig()
-	itemServiceClient, err := clients.NewItemClient(context.Background(), config)
-	if err != nil {
+	itemServiceClient, err := clients.CreateItemClient(context.TODO(), config)
+	if err != nil && itemServiceClient == nil {
 		panic("failed to create item client: " + err.Error())
 	}
 	return &ItemHandler{
