@@ -12,7 +12,6 @@ import (
 	"go-server/internal/router"
 	"go-server/internal/schedule"
 	"go-server/pkg/logging"
-
 )
 
 func main() {

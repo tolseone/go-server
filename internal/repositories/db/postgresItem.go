@@ -21,10 +21,10 @@ type RepositoryItem struct {
 }
 
 type ItemData struct {
-	ItemId      uuid.UUID `json:"item_id"`
-	Name        string    `json:"name"`
-	Rarity      string    `json:"rarity"`
-	Description string    `json:"description,omitempty"`
+	ItemId  uuid.UUID `json:"item_id"`
+	Name    string    `json:"name"`
+	Rarity  string    `json:"rarity"`
+	Quality string    `json:"quality,omitempty"`
 }
 
 func NewRepositoryItem(logger *logging.Logger) *RepositoryItem {
@@ -47,7 +47,8 @@ func (r *RepositoryItem) Create(ctx context.Context, i interface{}) (interface{}
 			id, 
 			name, 
 			rarity, 
-			description) 
+			quality
+		) 
 		VALUES (
 			gen_random_uuid(), 
 			$1, 
@@ -58,7 +59,7 @@ func (r *RepositoryItem) Create(ctx context.Context, i interface{}) (interface{}
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	itemData := i.(ItemData)
 
-	if err := r.client.QueryRow(ctx, q, itemData.Name, itemData.Rarity, itemData.Description).Scan(&itemData.ItemId); err != nil {
+	if err := r.client.QueryRow(ctx, q, itemData.Name, itemData.Rarity, itemData.Quality).Scan(&itemData.ItemId); err != nil {
 		r.logger.Infof("Failed to create item: %v", itemData)
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -94,7 +95,7 @@ func (r *RepositoryItem) FindAll(ctx context.Context) ([]ItemData, error) {
 			id, 
 			name, 
 			rarity, 
-			description 
+			quality 
 		FROM public.item
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
@@ -108,7 +109,7 @@ func (r *RepositoryItem) FindAll(ctx context.Context) ([]ItemData, error) {
 	for rows.Next() {
 		var it ItemData
 
-		if err := rows.Scan(&it.ItemId, &it.Name, &it.Rarity, &it.Description); err != nil {
+		if err := rows.Scan(&it.ItemId, &it.Name, &it.Rarity, &it.Quality); err != nil {
 			return nil, err
 		}
 
@@ -128,14 +129,14 @@ func (r *RepositoryItem) FindOne(ctx context.Context, id string) (ItemData, erro
 			id, 
 			name, 
 			rarity, 
-			description 
+			quality 
 		FROM public.item 
 		WHERE id = $1
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	var it ItemData
-	err := r.client.QueryRow(ctx, q, id).Scan(&it.ItemId, &it.Name, &it.Rarity, &it.Description)
+	err := r.client.QueryRow(ctx, q, id).Scan(&it.ItemId, &it.Name, &it.Rarity, &it.Quality)
 	if err != nil {
 		return ItemData{}, err
 	}
@@ -149,7 +150,7 @@ func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interfac
 		SET 
 			name = $1, 
 			rarity = $2, 
-			description = $3
+			quality = $3
 		WHERE 
 			id = $4
 	`
@@ -157,7 +158,7 @@ func (r *RepositoryItem) Update(ctx context.Context, item interface{}) (interfac
 
 	updatedItem := item.(ItemData)
 
-	if _, err := r.client.Exec(ctx, q, updatedItem.Name, updatedItem.Rarity, updatedItem.Description, updatedItem.ItemId); err != nil {
+	if _, err := r.client.Exec(ctx, q, updatedItem.Name, updatedItem.Rarity, updatedItem.Quality, updatedItem.ItemId); err != nil {
 		return nil, err
 	}
 
