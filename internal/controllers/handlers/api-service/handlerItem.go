@@ -13,7 +13,6 @@ import (
 	"go-server/internal/grpc-clients"
 	"go-server/internal/models"
 	"go-server/pkg/logging"
-
 )
 
 type ItemHandler struct {
@@ -90,7 +89,7 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request, params 
 		return
 	}
 
-	id, err := h.itemServiceClient.CreateItem(context.TODO(), newItem.Name, newItem.Rarity, newItem.Description)
+	id, err := h.itemServiceClient.CreateItem(context.TODO(), newItem.Name, newItem.Rarity, newItem.Quality)
 	if err != nil {
 		h.logger.Fatalf("failed to create item: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -116,4 +115,69 @@ func (h *ItemHandler) DeleteItemByUUID(w http.ResponseWriter, r *http.Request, p
 
 	w.WriteHeader(http.StatusNoContent)
 	w.Write([]byte("Удаление предмета с UUID " + itemID + " прошло успешно"))
+}
+
+func (h *ItemHandler) UpdateItemDB(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	resp, err := http.Get("https://dota2.csgobackpack.net/api/GetItemsList/v2/")
+	if err != nil {
+		h.logger.Errorf("failed to get items: %v", err)
+		http.Error(w, "Error due calling external API", http.StatusInternalServerError)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	var itemsResponse model.ItemsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&itemsResponse); err != nil {
+		h.logger.Errorf("Failed to decode JSON: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Create channel to manage goroutines
+	limit := make(chan struct{}, 100) // Ограничение до 100 одновременных запросов
+
+	// Create channel to manage errors
+	errc := make(chan error, len(itemsResponse.ItemsList))
+
+	// Run goroutines
+	for itemName, itemDetail := range itemsResponse.ItemsList {
+		// Manage quantity of goroutines
+		limit <- struct{}{}
+
+		// Run goroutine to save item to DB
+		go func(itemName string, itemDetail model.ItemDetail) {
+			// Освобождение семафора после завершения горутины
+			defer func() { <-limit }()
+
+			// Create ItemPartial depends on itemDetail
+			itemPartial := model.ItemPartial{
+				Name:    itemDetail.Name,
+				Rarity:  itemDetail.Rarity,
+				Quality: itemDetail.Quality,
+			}
+
+			// Try to save item to DB
+			_, err := h.itemServiceClient.CreateItem(context.TODO(), itemPartial.Name, itemPartial.Rarity, itemPartial.Quality)
+			if err != nil {
+				// Send error to error channel
+				errc <- err
+			}
+		}(itemName, itemDetail)
+	}
+
+	// Waiting for all goroutines to finish
+	for i := 0; i < len(itemsResponse.ItemsList); i++ {
+		// Receive error from error channel
+		if err := <-errc; err != nil {
+			// Error handling
+			h.logger.Errorf("failed to create item: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Successful response to user
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Item's DB updated successfully"))
 }

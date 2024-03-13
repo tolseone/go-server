@@ -65,13 +65,13 @@ func InterceptorLogger(l *slog.Logger) grpclog.Logger {
 	})
 }
 
-func (c *Client) CreateItem(ctx context.Context, name string, rarity string, description string) (uuid.UUID, error) {
+func (c *Client) CreateItem(ctx context.Context, name string, rarity string, quality string) (uuid.UUID, error) {
 	const op = "grpc.CreateItem"
 
 	resp, err := c.api.CreateItem(ctx, &itemv1.CreateItemRequest{
-		Name:        name,
-		Rarity:      rarity,
-		Description: description,
+		Name:    name,
+		Rarity:  rarity,
+		Quality: quality,
 	})
 	if err != nil {
 		c.log.Error("%s: %s", op, err)
@@ -106,10 +106,10 @@ func (c *Client) GetAllItems(ctx context.Context) ([]*model.Item, error) {
 		}
 
 		newItem := &model.Item{
-			ItemId:      itemId,
-			Name:        item.GetName(),
-			Rarity:      item.GetRarity(),
-			Description: item.GetDescription(),
+			ItemId:  itemId,
+			Name:    item.GetName(),
+			Rarity:  item.GetRarity(),
+			Quality: item.GetQuality(),
 		}
 
 		newItems = append(newItems, newItem)
@@ -136,10 +136,10 @@ func (c *Client) GetItem(ctx context.Context, itemId string) (*model.Item, error
 	}
 
 	return &model.Item{
-		ItemId:      itemID,
-		Name:        item.GetName(),
-		Rarity:      item.GetRarity(),
-		Description: item.GetDescription(),
+		ItemId:  itemID,
+		Name:    item.GetName(),
+		Rarity:  item.GetRarity(),
+		Quality: item.GetQuality(),
 	}, nil
 }
 

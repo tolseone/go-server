@@ -4,10 +4,10 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"go-server/internal/config"
-	"go-server/internal/controllers/handlers"
-	"go-server/internal/controllers/handlers/admin"
-	"go-server/internal/controllers/handlers/api-service"
-	"go-server/internal/controllers/handlers/auth-service"
+	middleware "go-server/internal/controllers/handlers"
+	handleradmin "go-server/internal/controllers/handlers/admin"
+	handlerapi "go-server/internal/controllers/handlers/api-service"
+	handlerauth "go-server/internal/controllers/handlers/auth-service"
 	"go-server/pkg/logging"
 )
 
@@ -19,6 +19,8 @@ const (
 
 	itemsURL = "/api/items"
 	itemURL  = "/api/items/:uuid"
+
+	loadItemsURL = "/api/items/load/newdb"
 
 	usersURL = "/api/users"
 	userURL  = "/api/users/:uuid"
@@ -54,8 +56,9 @@ func GetRouter(cfg *config.Config) *httprouter.Router {
 
 	router.GET(itemsURL, middleware.AuthMiddleware(itemHandler.GetItemList, logging.GetLogger()))
 	router.GET(itemURL, middleware.AuthMiddleware(itemHandler.GetItemByUUID, logging.GetLogger()))
-	router.POST(itemsURL, middleware.AuthMiddleware(itemHandler.CreateItem, logging.GetLogger()))
+	router.POST(itemsURL, itemHandler.CreateItem)
 	router.DELETE(itemURL, middleware.AuthMiddleware(itemHandler.DeleteItemByUUID, logging.GetLogger()))
+	router.PUT(loadItemsURL, itemHandler.UpdateItemDB)
 
 	router.GET(usersURL, userHandler.GetUserList)
 	router.GET(userURL, userHandler.GetUserByUUID)
